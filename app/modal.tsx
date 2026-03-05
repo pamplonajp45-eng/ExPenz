@@ -68,81 +68,87 @@ export default function AddExpenseModal() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Amount Input */}
-        <View style={styles.amountContainer}>
-          <Text style={[styles.currency, { color: theme.green }]}>₱</Text>
-          <TextInput
-            style={[styles.amountInput, { color: theme.text }]}
-            placeholder="0"
-            placeholderTextColor={theme.muted}
-            keyboardType="numeric"
-            autoFocus
-            value={amount}
-            onChangeText={setAmount}
-          />
-        </View>
-
-        {/* Description */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.muted }]}>What's this for?</Text>
-          <TextInput
-            style={[styles.textInput, { color: theme.text, backgroundColor: theme.card, borderColor: theme.cardBorder }]}
-            placeholder="e.g. Lunch with friends"
-            placeholderTextColor={theme.muted}
-            value={description}
-            onChangeText={setDescription}
-          />
-        </View>
-
-        {/* Category Picker */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.muted }]}>Category</Text>
-          <View style={styles.categoryGrid}>
-            {CATEGORIES.map((cat) => {
-              const Icon = cat.icon;
-              const isSelected = category === cat.label;
-              const catColor = cat.color;
-              return (
-                <TouchableOpacity
-                  key={cat.label}
-                  style={[
-                    styles.categoryItem,
-                    { backgroundColor: theme.card, borderColor: isSelected ? theme.green : theme.cardBorder }
-                  ]}
-                  onPress={() => setCategory(cat.label)}
-                >
-                  <View style={[styles.catIconContainer, { backgroundColor: catColor + '20' }]}>
-                    {renderIcon(Icon, 20, catColor)}
-                  </View>
-                  <Text style={[styles.catLabel, { color: isSelected ? theme.text : theme.muted, fontWeight: isSelected ? '700' : '500' }]}>
-                    {cat.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.mainWrapper}>
+          {/* Amount Input */}
+          <View style={styles.amountContainer}>
+            <Text style={[styles.currency, { color: theme.green }]}>₱</Text>
+            <TextInput
+              style={[styles.amountInput, { color: theme.text }]}
+              placeholder="0"
+              placeholderTextColor={theme.muted}
+              keyboardType="numeric"
+              autoFocus
+              value={amount}
+              onChangeText={setAmount}
+              numberOfLines={1}
+            />
           </View>
-        </View>
 
-        {/* Payment Method */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.muted }]}>Payment Method</Text>
-          <View style={styles.methodList}>
-            {METHODS.map((m) => {
-              const isSelected = method === m;
-              return (
-                <TouchableOpacity
-                  key={m}
-                  style={[
-                    styles.methodBadge,
-                    { backgroundColor: isSelected ? theme.green : theme.card, borderColor: isSelected ? theme.green : theme.cardBorder }
-                  ]}
-                  onPress={() => setMethod(m)}
-                >
-                  <Text style={[styles.methodText, { color: isSelected ? '#fff' : theme.muted }]}>{m}</Text>
-                </TouchableOpacity>
-              );
-            })}
+          {/* Description */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.muted }]}>What's this for?</Text>
+            <TextInput
+              style={[styles.textInput, { color: theme.text, backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+              placeholder="e.g. Lunch with friends"
+              placeholderTextColor={theme.muted}
+              value={description}
+              onChangeText={setDescription}
+            />
+          </View>
+
+          {/* Category Picker */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.muted }]}>Category</Text>
+            <View style={styles.categoryGrid}>
+              {CATEGORIES.map((cat) => {
+                const Icon = cat.icon;
+                const isSelected = category === cat.label;
+                const catColor = cat.color;
+                return (
+                  <TouchableOpacity
+                    key={cat.label}
+                    style={[
+                      styles.categoryItem,
+                      { backgroundColor: theme.card, borderColor: isSelected ? theme.green : theme.cardBorder }
+                    ]}
+                    onPress={() => setCategory(cat.label)}
+                  >
+                    <View style={[styles.catIconContainer, { backgroundColor: catColor + '20' }]}>
+                      {renderIcon(Icon, 20, catColor)}
+                    </View>
+                    <Text style={[styles.catLabel, { color: isSelected ? theme.text : theme.muted, fontWeight: isSelected ? '700' : '500' }]}>
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Payment Method */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.muted }]}>Payment Method</Text>
+            <View style={styles.methodList}>
+              {METHODS.map((m) => {
+                const isSelected = method === m;
+                return (
+                  <TouchableOpacity
+                    key={m}
+                    style={[
+                      styles.methodBadge,
+                      { backgroundColor: isSelected ? theme.green : theme.card, borderColor: isSelected ? theme.green : theme.cardBorder }
+                    ]}
+                    onPress={() => setMethod(m)}
+                  >
+                    <Text style={[styles.methodText, { color: isSelected ? '#fff' : theme.muted }]}>{m}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -187,8 +193,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   scrollContent: {
-    padding: 20,
     paddingBottom: 40,
+    flexGrow: 1,
+  },
+  mainWrapper: {
+    padding: 20,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
   },
   amountContainer: {
     flexDirection: 'row',

@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 
 export interface Expense {
     id: string;
+    user_id: string;
     created_at: string;
     amount: number;
     category: string;
@@ -12,19 +13,26 @@ export interface Expense {
 
 export const expenseService = {
     async getExpenses() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
         const { data, error } = await supabase
             .from('expenses')
             .select('*')
+            .eq('user_id', user.id)
             .order('date', { ascending: false });
 
         if (error) throw error;
         return data as Expense[];
     },
 
-    async addExpense(expense: Omit<Expense, 'id' | 'created_at'>) {
+    async addExpense(expense: Omit<Expense, 'id' | 'created_at' | 'user_id'>) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
         const { data, error } = await supabase
             .from('expenses')
-            .insert([expense])
+            .insert([{ ...expense, user_id: user.id }])
             .select();
 
         if (error) throw error;
@@ -32,10 +40,14 @@ export const expenseService = {
     },
 
     async deleteExpense(id: string) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
         const { error } = await supabase
             .from('expenses')
             .delete()
-            .eq('id', id);
+            .eq('id', id)
+            .eq('user_id', user.id); // Guard for security
 
         if (error) throw error;
     }

@@ -1,0 +1,32 @@
+export const COLORS = {
+    light: {
+        background: "#F8FAFC",
+        card: "#FFFFFF",
+        cardBorder: "#E2E8F0",
+        text: "#0F172A",
+        muted: "#64748B",
+        green: "#10B981",
+        greenDim: "#059669",
+        greenGlow: "rgba(16,185,129,0.1)",
+        red: "#EF4444",
+        yellow: "#F59E0B",
+        accent: "#0EA5E9",
+        tabBar: "#FFFFFF",
+        tabBarBorder: "#E2E8F0",
+    },
+    dark: {
+        background: "#0A0F1E",
+        card: "#111827",
+        cardBorder: "#1E293B",
+        text: "#F1F5F9",
+        muted: "#64748B",
+        green: "#22C55E",
+        greenDim: "#16A34A",
+        greenGlow: "rgba(34,197,94,0.15)",
+        red: "#F87171",
+        yellow: "#FACC15",
+        accent: "#38BDF8",
+        tabBar: "#111827",
+        tabBarBorder: "#1E293B",
+    }
+};

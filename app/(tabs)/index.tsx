@@ -5,13 +5,13 @@ import { aiService } from '@/services/aiService';
 import { Expense, expenseService } from '@/services/expenseService';
 import { PayrollEntry, payrollService } from '@/services/payrollService';
 import { Profile, profileService } from '@/services/profileService';
+import { utangService } from '@/services/utangService';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import { ArrowUpRight, Download, Edit2, LogOut, Plus, Search, Sparkles, TrendingDown, Users, Wallet, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as XLSX from 'xlsx';
-
 // Mock data for initial design preview if Supabase is not yet connected
 const MOCK_EXPENSES: Expense[] = [
   { id: '1', user_id: '', amount: 162, category: 'Supplies', description: 'Tray', date: '2025-03-01', created_at: '', payment_method: 'GCash' },
@@ -77,14 +77,16 @@ export default function Dashboard() {
         return;
       }
 
-      const [expenseData, profileData, payrollData] = await Promise.all([
+      const [expenseData, profileData, payrollData, utangData] = await Promise.all([
         expenseService.getExpenses(),
         profileService.getProfile(),
-        payrollService.getPayrollEntries()
+        payrollService.getPayrollEntries(),
+        utangService.getUtangs()
       ]);
 
       setExpenses(expenseData);
       setPayrollEntries(payrollData);
+      setUtangs(utangData);
 
       if (profileData) {
         setProfile(profileData);
@@ -151,16 +153,23 @@ export default function Dashboard() {
     }
   };
 
+  // State added above
+  const [utangs, setUtangs] = useState<any[]>([]);
+
   const totalSpent = expenses.filter(e => e.category !== 'Payroll').reduce((sum, e) => sum + e.amount, 0);
   const totalPayroll = payrollEntries.reduce((sum, e) => sum + e.week1 + e.week2, 0);
   const capital = profile?.monthly_income || 50000;
+
+  const totalReceivables = utangs.filter(u => u.type === 'lent' && u.status === 'active').reduce((sum, u) => sum + u.balance, 0);
+  const totalPayables = utangs.filter(u => u.type === 'borrowed' && u.status === 'active').reduce((sum, u) => sum + u.balance, 0);
+
   const remaining = capital - totalSpent - totalPayroll;
   const totalProfit = remaining;
 
   const getAIInsight = async () => {
     setAnalyzing(true);
     try {
-      const insight = await aiService.generateInsights(expenses, capital);
+      const insight = await aiService.generateInsights(expenses, capital, utangs); // 👈 add utangs
       setAiInsight(insight);
     } catch (error) {
       setAiInsight("Medyo busy ang AI advisor mo. Subukan uli mamaya!");
@@ -171,100 +180,90 @@ export default function Dashboard() {
 
   const exportToExcel = async () => {
     try {
-      if (expenses.length === 0) {
-        Alert.alert("Walang Laman", "Wala ka pang expenses na pwede i-export perds.");
+      if (expenses.length === 0 && payrollEntries.length === 0 && utangs.length === 0) {
+        Alert.alert("Walang Laman", "Wala ka pang data na pwede i-export perds.");
         return;
       }
 
-      // 1. Prepare Data for a Professional Report
-      // Header and Summary Section
-      const reportHeader = [
-        ["ExPenz Financial Report"],
-        [`Target Date: ${new Date().toLocaleDateString()}`],
-        [""],
-        ["Financial Summary"],
-        ["Total Monthly Income:", null, `₱${capital.toLocaleString()}`],
-        ["Total Expenses:", null, `₱${totalSpent.toLocaleString()}`],
-        ["Total Payroll:", null, `₱${totalPayroll.toLocaleString()}`],
-        ["Total Profit:", null, `₱${totalProfit.toLocaleString()}`],
-        [""],
-        ["Payroll Details"],
-        ["Name", "Week 1", "Week 2", "Total"],
-        ...payrollEntries.map(p => [p.employee_name, p.week1, p.week2, p.week1 + p.week2]),
-        [""],
-        ["Expense Details"]
-      ];
-
-      const tableHeader = [
-        "Date", "Description", "Category", "Amount", "Payment Method"
-      ];
-
-      const transactionData = expenses.filter(e => e.category !== 'Payroll').map(e => [
-        e.date,
-        e.description || e.category,
-        e.category,
-        e.amount,
-        e.payment_method || "N/A"
+      const payrollDataRows = payrollEntries.map(p => [p.employee_name, p.week1, p.week2, p.week1 + p.week2]);
+      const utangDataRows = utangs.map(u => [
+        u.type === 'lent' ? 'Pautang Ko (Receivable)' : 'Utang Ko (Payable)',
+        u.person_name, u.amount, u.balance,
+        u.due_date || 'N/A', u.reason || 'N/A', u.status
+      ]);
+      const expenseDataRows = expenses.filter(e => e.category !== 'Payroll').map(e => [
+        e.date, e.description || e.category, e.category, e.amount, e.payment_method || 'N/A'
       ]);
 
-      // Combine all data
-      const finalData = [...reportHeader, tableHeader, ...transactionData];
-
-      // 2. Create Workbook and Worksheet
-      const ws = XLSX.utils.aoa_to_sheet(finalData);
-
-      // Add basic formatting (merging title cells)
-      ws['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }, // Title
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } }  // Date
+      const finalData = [
+        ['ExPenz Financial Report'],
+        [`Generated: ${new Date().toLocaleDateString()}`],
+        [''],
+        ['=== FINANCIAL SUMMARY ==='],
+        ['Total Monthly Income:', '', `₱${capital.toLocaleString()}`],
+        ['Total Expenses:', '', `₱${totalSpent.toLocaleString()}`],
+        ['Total Payroll:', '', `₱${totalPayroll.toLocaleString()}`],
+        ['NET PROFIT:', '', `₱${totalProfit.toLocaleString()}`],
+        [''],
+        ['=== UTANG SUMMARY ==='],
+        ['Receivables (Pautang Ko):', '', `₱${totalReceivables.toLocaleString()}`],
+        ['Payables (Utang Ko):', '', `₱${totalPayables.toLocaleString()}`],
+        ['Net Utang Position:', '', `${(totalReceivables - totalPayables) >= 0 ? '+' : ''}₱${(totalReceivables - totalPayables).toLocaleString()}`],
+        [''],
+        ['=== PAYROLL DETAILS ==='],
+        ['Name', 'Week 1', 'Week 2', 'Total'],
+        ...payrollDataRows,
+        [''],
+        ['=== ACTIVE UTANG RECORDS ==='],
+        ['Type', 'Person', 'Amount', 'Balance', 'Due Date', 'Reason', 'Status'],
+        ...utangDataRows,
+        [''],
+        ['=== EXPENSE DETAILS ==='],
+        ['Date', 'Description', 'Category', 'Amount', 'Payment Method'],
+        ...expenseDataRows,
       ];
 
-      // Set column widths
+      const ws = XLSX.utils.aoa_to_sheet(finalData);
+
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },
+      ];
+
       ws['!cols'] = [
-        { wch: 15 }, // Date
-        { wch: 30 }, // Description
-        { wch: 15 }, // Category
-        { wch: 12 }, // Amount
-        { wch: 15 }, // Payment Method
+        { wch: 28 }, { wch: 22 }, { wch: 18 },
+        { wch: 18 }, { wch: 20 }, { wch: 22 }, { wch: 12 }
       ];
 
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Ulat ng Gastos");
+      XLSX.utils.book_append_sheet(wb, ws, 'ExPenz Report');
 
-      // 3. Generate filename
       const fileName = `ExPenz_Report_${new Date().getTime()}.xlsx`;
 
-      // 4. Handle Platform Specific Export
       if (Platform.OS === 'web') {
-        // For Web: XLSX.writeFile handles the download automatically in the browser
         XLSX.writeFile(wb, fileName);
       } else {
-        // For Native (iOS/Android): Use Expo FileSystem and Sharing
-        // Dynamically require to avoid bundling issues on Web
         const FileSystem = require('expo-file-system/legacy');
         const Sharing = require('expo-sharing');
 
         if (!FileSystem.documentDirectory) {
-          Alert.alert("Error", "Hindi ma-access ang filesystem ng device mo.");
+          Alert.alert('Error', 'Hindi ma-access ang filesystem ng device mo.');
           return;
         }
 
         const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
         const uri = FileSystem.documentDirectory + fileName;
-
-        await FileSystem.writeAsStringAsync(uri, wbout, {
-          encoding: 'base64'
-        });
+        await FileSystem.writeAsStringAsync(uri, wbout, { encoding: 'base64' });
 
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(uri);
         } else {
-          Alert.alert("Ops!", "Hindi available ang sharing sa device na ito perds.");
+          Alert.alert('Ops!', 'Hindi available ang sharing sa device na ito perds.');
         }
       }
     } catch (error) {
-      console.error("Export error:", error);
-      Alert.alert("Error", "Hindi natuloy ang page-export ng report.");
+      console.error('Export error:', error);
+      Alert.alert('Export Error', `Hindi natuloy: ${(error as any)?.message || 'Unknown error'}`);
     }
   };
 
@@ -359,7 +358,7 @@ export default function Dashboard() {
             {!aiInsight ? (
               <View style={styles.aiEmpty}>
                 <Text style={[styles.aiEmptyText, { color: theme.muted }]}>
-                  Analyze your spending patterns with AI.
+                  Analyze your spending patterns with ExPenz AI.
                 </Text>
                 <TouchableOpacity
                   style={[styles.aiButton, { backgroundColor: theme.green }]}

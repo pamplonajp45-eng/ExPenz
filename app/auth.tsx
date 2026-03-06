@@ -205,7 +205,7 @@ export default function AuthScreen() {
                             <View style={[styles.inputWrapper, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
                                 {renderIcon(User, 20, theme.muted)}
                                 <TextInput
-                                    style={[styles.input, { color: theme.text }]}
+                                    style={[styles.input, { color: theme.text, outline: 'none' } as any]}
                                     placeholder="Full Name"
                                     placeholderTextColor={theme.muted}
                                     value={fullName}
@@ -220,7 +220,7 @@ export default function AuthScreen() {
                             <View style={[styles.inputWrapper, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
                                 {renderIcon(Mail, 20, theme.muted)}
                                 <TextInput
-                                    style={[styles.input, { color: theme.text }]}
+                                    style={[styles.input, { color: theme.text, outline: 'none' } as any]}
                                     placeholder="Email Address"
                                     placeholderTextColor={theme.muted}
                                     value={email}
@@ -236,7 +236,7 @@ export default function AuthScreen() {
                             <View style={[styles.inputWrapper, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
                                 {renderIcon(Lock, 20, theme.muted)}
                                 <TextInput
-                                    style={[styles.input, { color: theme.text }]}
+                                    style={[styles.input, { color: theme.text, outline: 'none' } as any]}
                                     placeholder="Enter OTP Code"
                                     placeholderTextColor={theme.muted}
                                     value={otp}
@@ -252,7 +252,7 @@ export default function AuthScreen() {
                             <View style={[styles.inputWrapper, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
                                 {renderIcon(Lock, 20, theme.muted)}
                                 <TextInput
-                                    style={[styles.input, { color: theme.text }]}
+                                    style={[styles.input, { color: theme.text, outline: 'none' } as any]}
                                     placeholder={isForgotPassword ? "New Password" : (isSignUp ? "Set Password" : "Password")}
                                     placeholderTextColor={theme.muted}
                                     value={password}
@@ -371,12 +371,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         height: 56,
         borderRadius: 16,
-        borderWidth: 1,
         gap: 12,
+        borderWidth: 1,
+        outlineWidth: 0,
     },
     input: {
         flex: 1,
         fontSize: 16,
+        outlineWidth: 0,
+        borderWidth: 0,
     },
     mainButton: {
         height: 56,

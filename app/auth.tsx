@@ -44,28 +44,18 @@ export default function AuthScreen() {
   >("email");
 
   React.useEffect(() => {
-    // Handle Recovery Links & Auto-redirect if already logged in
+    // Handle PASSWORD_RECOVERY deep links
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsForgotPassword(true);
         setForgotPasswordStep("password");
-      } else if (session && !isForgotPassword && !isSignUp) {
-        // If logged in normally, go to tabs
-        router.replace("/(tabs)");
-      }
-    });
-
-    // Initial check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && !isForgotPassword && !isSignUp) {
-        router.replace("/(tabs)");
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [isForgotPassword, isSignUp]);
+  }, []); // ✅ Only run once at mount
 
   async function signInWithEmail() {
     if (!email || !password) {

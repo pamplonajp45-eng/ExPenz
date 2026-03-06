@@ -163,14 +163,10 @@ ${
           return retryResponse.text().trim();
         } catch (retryError) {
           console.error("Retry also failed:", retryError);
-          // Return fallback message if retry fails
         }
       }
 
-      // Fallback messages
-      return isLent
-        ? `Hi ${personName}! Kumusta? Remind ko lang sana yung nahiram mong ₱${amountInt.toLocaleString()} nung nakaraan. Let me know kung kailan mo masend ah, salamat!`
-        : `Hi ${personName}! Update lang kita dun sa nahiram kong ₱${amountInt.toLocaleString()}. Don't worry, inaayos ko na. Thank you sa patience!`;
+      throw error;
     }
   },
 };

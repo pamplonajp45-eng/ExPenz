@@ -1,7 +1,9 @@
 import { COLORS } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { supabase } from "@/lib/supabase";
+import { aiService } from "@/services/aiService";
 import { Utang, utangService } from "@/services/utangService";
+import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import {
   Check,
@@ -38,6 +40,10 @@ export default function UtangScreen() {
   // Modals
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [messageModalVisible, setMessageModalVisible] = useState(false);
+  const [generatedMessage, setGeneratedMessage] = useState("");
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [utangToDelete, setUtangToDelete] = useState<string | null>(null);
 
   // Add Form State
   const [newType, setNewType] = useState<"lent" | "borrowed">("lent");
@@ -103,6 +109,18 @@ export default function UtangScreen() {
         due_date: newDueDate,
         has_interest: false,
       });
+
+      // Generate AI follow-up message
+      const message = await aiService.generateUtangFollowUpMessage(
+        newName,
+        parseFloat(newAmount),
+        newReason,
+        newDueDate,
+        newType,
+      );
+      setGeneratedMessage(message);
+      setMessageModalVisible(true);
+
       setAddModalVisible(false);
       setNewName("");
       setNewAmount("");
@@ -146,27 +164,38 @@ export default function UtangScreen() {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert(
-      "Burahin ito?",
-      "Sigurado ka bang buburahin mo 'to? Pati records ng payments burado din ha.",
-      [
-        { text: "Huwag", style: "cancel" },
-        {
-          text: "Burahin",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await utangService.deleteUtang(id);
-              fetchData();
-            } catch (e) {
-              Alert.alert("Error", "Hindi mabura perds.");
-              setLoading(false);
-            }
-          },
-        },
-      ],
-    );
+    console.log("🗑️ Delete button pressed for utang:", id);
+    setUtangToDelete(id);
+    setDeleteConfirmVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!utangToDelete) return;
+
+    try {
+      console.log("✅ Confirming delete for:", utangToDelete);
+      setActionLoading(true);
+
+      console.log("🔄 Calling utangService.deleteUtang...");
+      await utangService.deleteUtang(utangToDelete);
+      console.log("✔️ Delete successful");
+
+      console.log("🔄 Fetching updated data...");
+      await fetchData();
+      console.log("✔️ Data fetched successfully");
+
+      setDeleteConfirmVisible(false);
+      setUtangToDelete(null);
+      Alert.alert("Success", "Nabura mo na ang utang perds.");
+      console.log("✔️ Success alert shown");
+    } catch (e: any) {
+      console.error("❌ Delete error:", e);
+      console.error("Error message:", e.message);
+      Alert.alert("Error", `Hindi mabura perds: ${e.message || "Try again!"}`);
+    } finally {
+      setActionLoading(false);
+      console.log("🏁 Delete operation finished");
+    }
   };
 
   if (loading && utangs.length === 0) {
@@ -322,6 +351,7 @@ export default function UtangScreen() {
                 </View>
                 <TouchableOpacity
                   onPress={() => handleDelete(utang.id)}
+                  activeOpacity={0.6}
                   style={styles.deleteBtn}
                 >
                   <Trash2 size={16} color={theme.red} />
@@ -391,7 +421,7 @@ export default function UtangScreen() {
           >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>
-                Dalaw or Dinapuan?
+                Mag add ng record
               </Text>
               <TouchableOpacity onPress={() => setAddModalVisible(false)}>
                 <X size={24} color={theme.muted} />
@@ -594,6 +624,168 @@ export default function UtangScreen() {
       >
         <Plus size={24} color="#fff" />
       </TouchableOpacity>
+
+      {/* Generated Message Modal */}
+      <Modal
+        visible={messageModalVisible}
+        animationType="fade"
+        transparent={true}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.card, borderColor: theme.cardBorder },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                AI-Generated Message
+              </Text>
+              <TouchableOpacity onPress={() => setMessageModalVisible(false)}>
+                <X size={24} color={theme.muted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ marginBottom: 20, paddingHorizontal: 8 }}>
+              <Text
+                style={[
+                  styles.metaText,
+                  { color: theme.muted, marginBottom: 12 },
+                ]}
+              >
+                Suggested message to send:
+              </Text>
+              <View
+                style={[
+                  {
+                    backgroundColor: theme.background,
+                    borderRadius: 12,
+                    padding: 14,
+                    borderWidth: 1,
+                    borderColor: theme.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[{ color: theme.text, lineHeight: 20 }]}>
+                  {generatedMessage}
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.saveButton, { backgroundColor: theme.green }]}
+              onPress={async () => {
+                // Copy to clipboard
+                await Clipboard.setStringAsync(generatedMessage);
+                Alert.alert(
+                  "Success",
+                  "Copied sa clipboard! Ready mo nang i-send.",
+                );
+                setMessageModalVisible(false);
+              }}
+            >
+              <Text style={styles.saveBtnText}>Copy to Clipboard</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                { backgroundColor: theme.cardBorder, marginTop: 8 },
+              ]}
+              onPress={() => setMessageModalVisible(false)}
+            >
+              <Text style={[styles.saveBtnText, { color: theme.text }]}>
+                Close
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={deleteConfirmVisible}
+        animationType="fade"
+        transparent={true}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.card, borderColor: theme.cardBorder },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Burahin ito?
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setDeleteConfirmVisible(false);
+                  setUtangToDelete(null);
+                }}
+              >
+                <X size={24} color={theme.muted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ marginBottom: 24 }}>
+              <Text style={[styles.metaText, { color: theme.muted }]}>
+                Sigurado ka bang buburahin mo 'to? Pati records ng payments
+                burado din ha.
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <TouchableOpacity
+                style={[
+                  styles.saveButton,
+                  { backgroundColor: theme.cardBorder, flex: 1 },
+                ]}
+                onPress={() => {
+                  setDeleteConfirmVisible(false);
+                  setUtangToDelete(null);
+                }}
+                disabled={actionLoading}
+              >
+                <Text style={[styles.saveBtnText, { color: theme.text }]}>
+                  Huwag
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.saveButton,
+                  { backgroundColor: theme.red, flex: 1 },
+                ]}
+                onPress={confirmDelete}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Burahin</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={[
+          styles.fab,
+          { backgroundColor: theme.green, shadowColor: theme.green },
+        ]}
+        onPress={() => setAddModalVisible(true)}
+      >
+        <Plus size={24} color="#fff" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -714,7 +906,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   deleteBtn: {
-    padding: 4,
+    padding: 12,
+    marginLeft: 8,
   },
   detailsRow: {
     marginBottom: 8,

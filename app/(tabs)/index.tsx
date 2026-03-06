@@ -101,6 +101,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
 
   // Income Editing State
   const [showIncomeModal, setShowIncomeModal] = useState(false);
@@ -123,15 +124,16 @@ export default function Dashboard() {
 
   // PWA Install Prompt
   React.useEffect(() => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       // Register service worker
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js')
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker
+          .register("/sw.js")
           .then((registration) => {
-            console.log('Service Worker registered:', registration);
+            console.log("Service Worker registered:", registration);
           })
           .catch((error) => {
-            console.log('Service Worker registration failed:', error);
+            console.log("Service Worker registration failed:", error);
           });
       }
 
@@ -141,10 +143,13 @@ export default function Dashboard() {
         setShowInstallButton(true);
       };
 
-      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
       return () => {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        window.removeEventListener(
+          "beforeinstallprompt",
+          handleBeforeInstallPrompt,
+        );
       };
     }
   }, []);
@@ -253,7 +258,7 @@ export default function Dashboard() {
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
+      if (outcome === "accepted") {
         setShowInstallButton(false);
       }
       setDeferredPrompt(null);
@@ -291,8 +296,20 @@ export default function Dashboard() {
         utangs,
       ); // 👈 add utangs
       setAiInsight(insight);
-    } catch (error) {
-      setAiInsight("Medyo busy ang AI advisor mo. Subukan uli mamaya!");
+      setQuotaExceeded(false);
+    } catch (error: any) {
+      console.error("AI Error:", error.message);
+      const isQuotaError =
+        error.message?.includes("429") || error.message?.includes("quota");
+
+      if (isQuotaError) {
+        setQuotaExceeded(true);
+        setAiInsight(
+          "🚫 Daily quota exceeded! AI Coach will be back tomorrow.",
+        );
+      } else {
+        setAiInsight("Medyo busy ang AI advisor mo. Subukan uli mamaya!");
+      }
     } finally {
       setAnalyzing(false);
     }
@@ -485,7 +502,7 @@ export default function Dashboard() {
               >
                 {renderIcon(LogOut, 20, theme.red)}
               </TouchableOpacity>
-              {Platform.OS === 'web' && showInstallButton && (
+              {Platform.OS === "web" && showInstallButton && (
                 <TouchableOpacity
                   style={[
                     styles.profileButton,
@@ -588,12 +605,21 @@ export default function Dashboard() {
                   Analyze your spending patterns with ExPenz AI.
                 </Text>
                 <TouchableOpacity
-                  style={[styles.aiButton, { backgroundColor: theme.green }]}
+                  style={[
+                    styles.aiButton,
+                    {
+                      backgroundColor: quotaExceeded
+                        ? theme.muted
+                        : theme.green,
+                    },
+                  ]}
                   onPress={getAIInsight}
-                  disabled={analyzing}
+                  disabled={analyzing || quotaExceeded}
                 >
                   {analyzing ? (
                     <ActivityIndicator color="#fff" size="small" />
+                  ) : quotaExceeded ? (
+                    <Text style={styles.aiButtonText}>Quota Limit Reached</Text>
                   ) : (
                     <>
                       {renderIcon(Sparkles, 16, "#fff")}

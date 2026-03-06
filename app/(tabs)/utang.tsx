@@ -77,7 +77,7 @@ export default function UtangScreen() {
     try {
       setLoading(true);
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Load utangs timeout')), 8000)
+        setTimeout(() => reject(new Error('Load utangs timeout')), 6000)
       );
 
       const dataPromise = utangService.getUtangs();

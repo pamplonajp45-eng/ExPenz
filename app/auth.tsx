@@ -58,7 +58,7 @@ export default function AuthScreen() {
         setLoading(true);
         try {
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Sign in timeout')), 10000)
+            setTimeout(() => reject(new Error('Sign in timeout')), 7000)
           );
 
           const signInPromise = supabase.auth.signInWithPassword({
@@ -91,7 +91,7 @@ export default function AuthScreen() {
         setLoading(true);
         try {
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('OTP send timeout')), 10000)
+            setTimeout(() => reject(new Error('OTP send timeout')), 7000)
           );
 
           const otpPromise = supabase.auth.signInWithOtp({
@@ -129,7 +129,7 @@ export default function AuthScreen() {
         setLoading(true);
         try {
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('OTP verify timeout')), 10000)
+            setTimeout(() => reject(new Error('OTP verify timeout')), 7000)
           );
 
           const verifyPromise = supabase.auth.verifyOtp({
@@ -164,7 +164,7 @@ export default function AuthScreen() {
         setLoading(true);
         try {
             const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Password reset timeout')), 10000)
+              setTimeout(() => reject(new Error('Password reset timeout')), 7000)
             );
 
             const resetPromise = supabase.auth.resetPasswordForEmail(email);

@@ -67,8 +67,9 @@ export default function ExpenseHistory() {
   const loadData = async () => {
     setLoading(true);
     try {
+      // Aggressive timeout for Vercel (6s max)
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Load expenses timeout')), 8000)
+        setTimeout(() => reject(new Error('Load expenses timeout')), 6000)
       );
 
       const dataPromise = expenseService.getExpenses();
@@ -80,8 +81,8 @@ export default function ExpenseHistory() {
 
       setExpenses(data || []);
       setDataLoaded(true);
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      console.warn('Expenses load failed:', error?.message || 'Unknown error');
       setExpenses([]); // Set empty array on error
       setDataLoaded(true); // Still mark as loaded to prevent infinite tries
     } finally {

@@ -174,9 +174,9 @@ export default function Dashboard() {
         return;
       }
 
-      // Add timeout to prevent hanging
+      // Add timeout to prevent hanging (7s max for Vercel)
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Data load timeout')), 10000)
+        setTimeout(() => reject(new Error('Data load timeout')), 7000)
       );
 
       const dataPromises = Promise.all([
@@ -199,18 +199,31 @@ export default function Dashboard() {
         setProfile(profileData);
         setTempIncome(profileData.monthly_income.toString());
       } else {
-        const newProfile = await profileService.createProfile();
-        setProfile(newProfile);
-        setTempIncome(newProfile.monthly_income.toString());
+        try {
+          const newProfile = await profileService.createProfile();
+          setProfile(newProfile);
+          setTempIncome(newProfile.monthly_income.toString());
+        } catch (err) {
+          console.warn('Could not create profile, using defaults');
+          setProfile(null);
+          setTempIncome('50000');
+        }
       }
       
       setDataLoaded(true);
     } catch (error: any) {
-      console.error("Dashboard error:", error);
+      console.error("Dashboard error:", error?.message);
       if (error.message?.includes("authenticated")) {
         router.replace("/auth");
+        return;
       }
-      // Set dataLoaded to true even on error to prevent infinite loading
+      
+      // Set default empty state on error so page still displays
+      setExpenses([]);
+      setPayrollEntries([]);
+      setUtangs([]);
+      setProfile(null);
+      setTempIncome('50000');
       setDataLoaded(true);
     } finally {
       setLoading(false);

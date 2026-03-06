@@ -35,7 +35,7 @@ export default function PayrollScreen() {
         setLoading(true);
         try {
             const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Load payroll timeout')), 8000)
+              setTimeout(() => reject(new Error('Load payroll timeout')), 6000)
             );
 
             const dataPromise = payrollService.getPayrollEntries();

@@ -1,22 +1,39 @@
-import { COLORS } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { expenseService } from '@/services/expenseService';
-import { useRouter } from 'expo-router';
-import { Home, ShoppingBag, Train, Users, Utensils, X, Zap } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { COLORS } from "@/constants/Colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { expenseService } from "@/services/expenseService";
+import { useRouter } from "expo-router";
+import {
+  Home,
+  ShoppingBag,
+  Train,
+  Users,
+  Utensils,
+  X,
+  Zap,
+} from "lucide-react-native";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const CATEGORIES = [
-  { label: 'Food', icon: Utensils, color: '#F87171' },
-  { label: 'Transport', icon: Train, color: '#38BDF8' },
-  { label: 'Shopping', icon: ShoppingBag, color: '#A78BFA' },
-  { label: 'Bills', icon: Zap, color: '#FACC15' },
-  { label: 'Rent', icon: Home, color: '#FB923C' },
-  { label: 'Supplies', icon: Users, color: '#10B981' },
+  { label: "Food", icon: Utensils, color: "#F87171" },
+  { label: "Transport", icon: Train, color: "#38BDF8" },
+  { label: "Shopping", icon: ShoppingBag, color: "#A78BFA" },
+  { label: "Bills", icon: Zap, color: "#FACC15" },
+  { label: "Rent", icon: Home, color: "#FB923C" },
+  { label: "Supplies", icon: Users, color: "#10B981" },
 ];
 
-const METHODS = ['Cash', 'GCash', 'SPayLater', 'Bank Transfer'];
+const METHODS = ["Cash", "GCash", "SPayLater", "Bank Transfer"];
 
 const renderIcon = (Icon: any, size: number, color: string) => {
   const IconComp = Icon as any;
@@ -25,13 +42,13 @@ const renderIcon = (Icon: any, size: number, color: string) => {
 
 export default function AddExpenseModal() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme() ?? "light";
   const theme = COLORS[colorScheme];
 
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Food');
-  const [method, setMethod] = useState('GCash');
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("Food");
+  const [method, setMethod] = useState("GCash");
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
@@ -46,7 +63,7 @@ export default function AddExpenseModal() {
         amount: Number(amount),
         description,
         category,
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split("T")[0],
         payment_method: method,
       });
       router.back();
@@ -59,9 +76,15 @@ export default function AddExpenseModal() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['bottom']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={["bottom"]}
+    >
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.closeButton}
+        >
           {renderIcon(X, 24, theme.text)}
         </TouchableOpacity>
         <Text style={[styles.title, { color: theme.text }]}>Add Expense</Text>
@@ -90,9 +113,18 @@ export default function AddExpenseModal() {
 
           {/* Description */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.muted }]}>What&apos;s this for?</Text>
+            <Text style={[styles.label, { color: theme.muted }]}>
+              What&apos;s this for?
+            </Text>
             <TextInput
-              style={[styles.textInput, { color: theme.text, backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+              style={[
+                styles.textInput,
+                {
+                  color: theme.text,
+                  backgroundColor: theme.card,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
               placeholder="e.g. Lunch with friends"
               placeholderTextColor={theme.muted}
               value={description}
@@ -113,14 +145,32 @@ export default function AddExpenseModal() {
                     key={cat.label}
                     style={[
                       styles.categoryItem,
-                      { backgroundColor: theme.card, borderColor: isSelected ? theme.green : theme.cardBorder }
+                      {
+                        backgroundColor: theme.card,
+                        borderColor: isSelected
+                          ? theme.green
+                          : theme.cardBorder,
+                      },
                     ]}
                     onPress={() => setCategory(cat.label)}
                   >
-                    <View style={[styles.catIconContainer, { backgroundColor: catColor + '20' }]}>
+                    <View
+                      style={[
+                        styles.catIconContainer,
+                        { backgroundColor: catColor + "20" },
+                      ]}
+                    >
                       {renderIcon(Icon, 20, catColor)}
                     </View>
-                    <Text style={[styles.catLabel, { color: isSelected ? theme.text : theme.muted, fontWeight: isSelected ? '700' : '500' }]}>
+                    <Text
+                      style={[
+                        styles.catLabel,
+                        {
+                          color: isSelected ? theme.text : theme.muted,
+                          fontWeight: isSelected ? "700" : "500",
+                        },
+                      ]}
+                    >
                       {cat.label}
                     </Text>
                   </TouchableOpacity>
@@ -131,7 +181,9 @@ export default function AddExpenseModal() {
 
           {/* Payment Method */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.muted }]}>Payment Method</Text>
+            <Text style={[styles.label, { color: theme.muted }]}>
+              Payment Method
+            </Text>
             <View style={styles.methodList}>
               {METHODS.map((m) => {
                 const isSelected = method === m;
@@ -140,11 +192,23 @@ export default function AddExpenseModal() {
                     key={m}
                     style={[
                       styles.methodBadge,
-                      { backgroundColor: isSelected ? theme.green : theme.card, borderColor: isSelected ? theme.green : theme.cardBorder }
+                      {
+                        backgroundColor: isSelected ? theme.green : theme.card,
+                        borderColor: isSelected
+                          ? theme.green
+                          : theme.cardBorder,
+                      },
                     ]}
                     onPress={() => setMethod(m)}
                   >
-                    <Text style={[styles.methodText, { color: isSelected ? '#fff' : theme.muted }]}>{m}</Text>
+                    <Text
+                      style={[
+                        styles.methodText,
+                        { color: isSelected ? "#fff" : theme.muted },
+                      ]}
+                    >
+                      {m}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -176,21 +240,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
   closeButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   title: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   scrollContent: {
     paddingBottom: 40,
@@ -198,33 +262,33 @@ const styles = StyleSheet.create({
   },
   mainWrapper: {
     padding: 20,
-    width: '100%',
+    width: "100%",
     maxWidth: 600,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
   amountContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginVertical: 40,
   },
   currency: {
     fontSize: 32,
-    fontWeight: '800',
+    fontWeight: "800",
     marginRight: 8,
   },
   amountInput: {
     fontSize: 64,
-    fontWeight: '800',
+    fontWeight: "800",
     minWidth: 100,
-    textAlign: 'center',
+    textAlign: "center",
   },
   inputGroup: {
     marginBottom: 24,
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 12,
   },
   textInput: {
@@ -235,34 +299,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
   },
   categoryItem: {
-    width: '31%',
+    width: "31%",
     aspectRatio: 1,
     borderRadius: 20,
     borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 10,
   },
   catIconContainer: {
     width: 44,
     height: 44,
     borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 8,
   },
   catLabel: {
     fontSize: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   methodList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   methodBadge: {
@@ -273,7 +337,7 @@ const styles = StyleSheet.create({
   },
   methodText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   footer: {
     padding: 20,
@@ -282,17 +346,17 @@ const styles = StyleSheet.create({
   saveButton: {
     height: 56,
     borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
   saveButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

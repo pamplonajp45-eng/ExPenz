@@ -1,21 +1,62 @@
-import { COLORS } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { supabase } from '@/lib/supabase';
-import { aiService } from '@/services/aiService';
-import { Expense, expenseService } from '@/services/expenseService';
-import { PayrollEntry, payrollService } from '@/services/payrollService';
-import { Profile, profileService } from '@/services/profileService';
-import { utangService } from '@/services/utangService';
-import { Link, useFocusEffect, useRouter } from 'expo-router';
-import { ArrowUpRight, Download, Edit2, LogOut, Plus, Search, Sparkles, TrendingDown, Users, Wallet, X } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import * as XLSX from 'xlsx';
+import { COLORS } from "@/constants/Colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { supabase } from "@/lib/supabase";
+import { aiService } from "@/services/aiService";
+import { Expense, expenseService } from "@/services/expenseService";
+import { PayrollEntry, payrollService } from "@/services/payrollService";
+import { Profile, profileService } from "@/services/profileService";
+import { utangService } from "@/services/utangService";
+import { Link, useFocusEffect, useRouter } from "expo-router";
+import {
+  ArrowUpRight,
+  Download,
+  Edit2,
+  LogOut,
+  Plus,
+  Search,
+  Sparkles,
+  TrendingDown,
+  Users,
+  Wallet,
+  X,
+} from "lucide-react-native";
+import React, { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import * as XLSX from "xlsx";
 // Mock data for initial design preview if Supabase is not yet connected
 const MOCK_EXPENSES: Expense[] = [
-  { id: '1', user_id: '', amount: 162, category: 'Supplies', description: 'Tray', date: '2025-03-01', created_at: '', payment_method: 'GCash' },
-  { id: '2', user_id: '', amount: 174, category: 'Supplies', description: 'Storage Box', date: '2025-03-02', created_at: '', payment_method: 'GCash' },
+  {
+    id: "1",
+    user_id: "",
+    amount: 162,
+    category: "Supplies",
+    description: "Tray",
+    date: "2025-03-01",
+    created_at: "",
+    payment_method: "GCash",
+  },
+  {
+    id: "2",
+    user_id: "",
+    amount: 174,
+    category: "Supplies",
+    description: "Storage Box",
+    date: "2025-03-02",
+    created_at: "",
+    payment_method: "GCash",
+  },
 ];
 
 const renderIcon = (Icon: any, size: number, color: string) => {
@@ -24,31 +65,33 @@ const renderIcon = (Icon: any, size: number, color: string) => {
 };
 
 const StatCard = ({ label, value, color, icon: Icon, theme, onEdit }: any) => (
-  <View style={[styles.statCard, { borderColor: theme.cardBorder, backgroundColor: theme.card }]}>
+  <View
+    style={[
+      styles.statCard,
+      { borderColor: theme.cardBorder, backgroundColor: theme.card },
+    ]}
+  >
     <View style={styles.statHeader}>
       <Text style={[styles.statLabel, { color: theme.muted }]}>{label}</Text>
-      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+      <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
         {onEdit && (
           <TouchableOpacity onPress={onEdit}>
             {renderIcon(Edit2, 14, theme.muted)}
           </TouchableOpacity>
         )}
-        <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
+        <View style={[styles.iconContainer, { backgroundColor: color + "15" }]}>
           {renderIcon(Icon, 16, color)}
         </View>
       </View>
     </View>
-    <Text
-      style={[styles.statValue, { color: theme.text }]}
-      numberOfLines={1}
-    >
+    <Text style={[styles.statValue, { color: theme.text }]} numberOfLines={1}>
       ₱{value.toLocaleString()}
     </Text>
   </View>
 );
 
 export default function Dashboard() {
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme() ?? "light";
   const theme = COLORS[colorScheme];
   const router = useRouter();
 
@@ -61,33 +104,57 @@ export default function Dashboard() {
 
   // Income Editing State
   const [showIncomeModal, setShowIncomeModal] = useState(false);
-  const [tempIncome, setTempIncome] = useState('');
+  const [tempIncome, setTempIncome] = useState("");
 
   // Expense Editing State
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [tempAmount, setTempAmount] = useState('');
+  const [tempAmount, setTempAmount] = useState("");
+
+  // PWA Install State
+  const [showInstallButton, setShowInstallButton] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, []),
   );
+
+  // PWA Install Prompt
+  React.useEffect(() => {
+    if (Platform.OS === 'web') {
+      const handleBeforeInstallPrompt = (e: any) => {
+        e.preventDefault();
+        setDeferredPrompt(e);
+        setShowInstallButton(true);
+      };
+
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      };
+    }
+  }, []);
 
   const loadData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
-        router.replace('/auth');
+        router.replace("/auth");
         return;
       }
 
-      const [expenseData, profileData, payrollData, utangData] = await Promise.all([
-        expenseService.getExpenses(),
-        profileService.getProfile(),
-        payrollService.getPayrollEntries(),
-        utangService.getUtangs()
-      ]);
+      const [expenseData, profileData, payrollData, utangData] =
+        await Promise.all([
+          expenseService.getExpenses(),
+          profileService.getProfile(),
+          payrollService.getPayrollEntries(),
+          utangService.getUtangs(),
+        ]);
 
       setExpenses(expenseData);
       setPayrollEntries(payrollData);
@@ -104,7 +171,7 @@ export default function Dashboard() {
     } catch (error: any) {
       console.error("Dashboard error:", error);
       if (error.message?.includes("authenticated")) {
-        router.replace('/auth');
+        router.replace("/auth");
       }
     } finally {
       setLoading(false);
@@ -115,32 +182,28 @@ export default function Dashboard() {
     const performLogout = async () => {
       try {
         await supabase.auth.signOut();
-        router.replace('/auth');
+        router.replace("/auth");
       } catch (error) {
         console.error("Logout error:", error);
         Alert.alert("Error", "Hindi maka-logout perds. Try again!");
       }
     };
 
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       if (confirm("Sigurado ka bang gusto mong mag-logout perds?")) {
         performLogout();
       }
       return;
     }
 
-    Alert.alert(
-      "Logout",
-      "Sigurado ka bang gusto mong mag-logout perds?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: performLogout
-        }
-      ]
-    );
+    Alert.alert("Logout", "Sigurado ka bang gusto mong mag-logout perds?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: performLogout,
+      },
+    ]);
   };
 
   const saveIncome = async () => {
@@ -175,15 +238,35 @@ export default function Dashboard() {
     }
   };
 
+  const handleInstallPWA = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setShowInstallButton(false);
+      }
+      setDeferredPrompt(null);
+    }
+  };
+
   // State added above
   const [utangs, setUtangs] = useState<any[]>([]);
 
-  const totalSpent = expenses.filter(e => e.category !== 'Payroll').reduce((sum, e) => sum + e.amount, 0);
-  const totalPayroll = payrollEntries.reduce((sum, e) => sum + e.week1 + e.week2, 0);
+  const totalSpent = expenses
+    .filter((e) => e.category !== "Payroll")
+    .reduce((sum, e) => sum + e.amount, 0);
+  const totalPayroll = payrollEntries.reduce(
+    (sum, e) => sum + e.week1 + e.week2,
+    0,
+  );
   const capital = profile?.monthly_income || 50000;
 
-  const totalReceivables = utangs.filter(u => u.type === 'lent' && u.status === 'active').reduce((sum, u) => sum + u.balance, 0);
-  const totalPayables = utangs.filter(u => u.type === 'borrowed' && u.status === 'active').reduce((sum, u) => sum + u.balance, 0);
+  const totalReceivables = utangs
+    .filter((u) => u.type === "lent" && u.status === "active")
+    .reduce((sum, u) => sum + u.balance, 0);
+  const totalPayables = utangs
+    .filter((u) => u.type === "borrowed" && u.status === "active")
+    .reduce((sum, u) => sum + u.balance, 0);
 
   const remaining = capital - totalSpent - totalPayroll;
   const totalProfit = remaining;
@@ -191,7 +274,11 @@ export default function Dashboard() {
   const getAIInsight = async () => {
     setAnalyzing(true);
     try {
-      const insight = await aiService.generateInsights(expenses, capital, utangs); // 👈 add utangs
+      const insight = await aiService.generateInsights(
+        expenses,
+        capital,
+        utangs,
+      ); // 👈 add utangs
       setAiInsight(insight);
     } catch (error) {
       setAiInsight("Medyo busy ang AI advisor mo. Subukan uli mamaya!");
@@ -202,103 +289,152 @@ export default function Dashboard() {
 
   const exportToExcel = async () => {
     try {
-      if (expenses.length === 0 && payrollEntries.length === 0 && utangs.length === 0) {
-        Alert.alert("Walang Laman", "Wala ka pang data na pwede i-export perds.");
+      if (
+        expenses.length === 0 &&
+        payrollEntries.length === 0 &&
+        utangs.length === 0
+      ) {
+        Alert.alert(
+          "Walang Laman",
+          "Wala ka pang data na pwede i-export perds.",
+        );
         return;
       }
 
-      const payrollDataRows = payrollEntries.map(p => [p.employee_name, p.week1, p.week2, p.week1 + p.week2]);
-      const utangDataRows = utangs.map(u => [
-        u.type === 'lent' ? 'Pautang Ko (Receivable)' : 'Utang Ko (Payable)',
-        u.person_name, u.amount, u.balance,
-        u.due_date || 'N/A', u.reason || 'N/A', u.status
+      const payrollDataRows = payrollEntries.map((p) => [
+        p.employee_name,
+        p.week1,
+        p.week2,
+        p.week1 + p.week2,
       ]);
-      const expenseDataRows = expenses.filter(e => e.category !== 'Payroll').map(e => [
-        e.date, e.description || e.category, e.category, e.amount, e.payment_method || 'N/A'
+      const utangDataRows = utangs.map((u) => [
+        u.type === "lent" ? "Pautang Ko (Receivable)" : "Utang Ko (Payable)",
+        u.person_name,
+        u.amount,
+        u.balance,
+        u.due_date || "N/A",
+        u.reason || "N/A",
+        u.status,
       ]);
+      const expenseDataRows = expenses
+        .filter((e) => e.category !== "Payroll")
+        .map((e) => [
+          e.date,
+          e.description || e.category,
+          e.category,
+          e.amount,
+          e.payment_method || "N/A",
+        ]);
 
       const finalData = [
-        ['ExPenz Financial Report'],
+        ["ExPenz Financial Report"],
         [`Generated: ${new Date().toLocaleDateString()}`],
-        [''],
-        ['=== FINANCIAL SUMMARY ==='],
-        ['Total Monthly Income:', '', `₱${capital.toLocaleString()}`],
-        ['Total Expenses:', '', `₱${totalSpent.toLocaleString()}`],
-        ['Total Payroll:', '', `₱${totalPayroll.toLocaleString()}`],
-        ['NET PROFIT:', '', `₱${totalProfit.toLocaleString()}`],
-        [''],
-        ['=== UTANG SUMMARY ==='],
-        ['Receivables (Pautang Ko):', '', `₱${totalReceivables.toLocaleString()}`],
-        ['Payables (Utang Ko):', '', `₱${totalPayables.toLocaleString()}`],
-        ['Net Utang Position:', '', `${(totalReceivables - totalPayables) >= 0 ? '+' : ''}₱${(totalReceivables - totalPayables).toLocaleString()}`],
-        [''],
-        ['=== PAYROLL DETAILS ==='],
-        ['Name', 'Week 1', 'Week 2', 'Total'],
+        [""],
+        ["=== FINANCIAL SUMMARY ==="],
+        ["Total Monthly Income:", "", `₱${capital.toLocaleString()}`],
+        ["Total Expenses:", "", `₱${totalSpent.toLocaleString()}`],
+        ["Total Payroll:", "", `₱${totalPayroll.toLocaleString()}`],
+        ["NET PROFIT:", "", `₱${totalProfit.toLocaleString()}`],
+        [""],
+        ["=== UTANG SUMMARY ==="],
+        [
+          "Receivables (Pautang Ko):",
+          "",
+          `₱${totalReceivables.toLocaleString()}`,
+        ],
+        ["Payables (Utang Ko):", "", `₱${totalPayables.toLocaleString()}`],
+        [
+          "Net Utang Position:",
+          "",
+          `${totalReceivables - totalPayables >= 0 ? "+" : ""}₱${(totalReceivables - totalPayables).toLocaleString()}`,
+        ],
+        [""],
+        ["=== PAYROLL DETAILS ==="],
+        ["Name", "Week 1", "Week 2", "Total"],
         ...payrollDataRows,
-        [''],
-        ['=== ACTIVE UTANG RECORDS ==='],
-        ['Type', 'Person', 'Amount', 'Balance', 'Due Date', 'Reason', 'Status'],
+        [""],
+        ["=== ACTIVE UTANG RECORDS ==="],
+        ["Type", "Person", "Amount", "Balance", "Due Date", "Reason", "Status"],
         ...utangDataRows,
-        [''],
-        ['=== EXPENSE DETAILS ==='],
-        ['Date', 'Description', 'Category', 'Amount', 'Payment Method'],
+        [""],
+        ["=== EXPENSE DETAILS ==="],
+        ["Date", "Description", "Category", "Amount", "Payment Method"],
         ...expenseDataRows,
       ];
 
       const ws = XLSX.utils.aoa_to_sheet(finalData);
 
-      ws['!merges'] = [
+      ws["!merges"] = [
         { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
         { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },
       ];
 
-      ws['!cols'] = [
-        { wch: 28 }, { wch: 22 }, { wch: 18 },
-        { wch: 18 }, { wch: 20 }, { wch: 22 }, { wch: 12 }
+      ws["!cols"] = [
+        { wch: 28 },
+        { wch: 22 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 20 },
+        { wch: 22 },
+        { wch: 12 },
       ];
 
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'ExPenz Report');
+      XLSX.utils.book_append_sheet(wb, ws, "ExPenz Report");
 
       const fileName = `ExPenz_Report_${new Date().getTime()}.xlsx`;
 
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         XLSX.writeFile(wb, fileName);
       } else {
-        const FileSystem = require('expo-file-system/legacy');
-        const Sharing = require('expo-sharing');
+        const FileSystem = require("expo-file-system/legacy");
+        const Sharing = require("expo-sharing");
 
         if (!FileSystem.documentDirectory) {
-          Alert.alert('Error', 'Hindi ma-access ang filesystem ng device mo.');
+          Alert.alert("Error", "Hindi ma-access ang filesystem ng device mo.");
           return;
         }
 
-        const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+        const wbout = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
         const uri = FileSystem.documentDirectory + fileName;
-        await FileSystem.writeAsStringAsync(uri, wbout, { encoding: 'base64' });
+        await FileSystem.writeAsStringAsync(uri, wbout, { encoding: "base64" });
 
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(uri);
         } else {
-          Alert.alert('Ops!', 'Hindi available ang sharing sa device na ito perds.');
+          Alert.alert(
+            "Ops!",
+            "Hindi available ang sharing sa device na ito perds.",
+          );
         }
       }
     } catch (error) {
-      console.error('Export error:', error);
-      Alert.alert('Export Error', `Hindi natuloy: ${(error as any)?.message || 'Unknown error'}`);
+      console.error("Export error:", error);
+      Alert.alert(
+        "Export Error",
+        `Hindi natuloy: ${(error as any)?.message || "Unknown error"}`,
+      );
     }
   };
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center' }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: theme.background, justifyContent: "center" },
+        ]}
+      >
         <ActivityIndicator color={theme.green} size="large" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={["top"]}
+    >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -308,51 +444,100 @@ export default function Dashboard() {
           <View style={styles.header}>
             <View>
               <Text style={[styles.greeting, { color: theme.muted }]}>
-                Kamusta, {profile?.full_name?.split(' ')[0] || 'ka-ExPenz'}!
+                Kamusta, {profile?.full_name?.split(" ")[0] || "ka-ExPenz"}!
               </Text>
-              <Text style={[styles.brand, { color: theme.text }]}>Ex<Text style={{ color: theme.green }}>Penz</Text></Text>
+              <Text style={[styles.brand, { color: theme.text }]}>
+                Ex<Text style={{ color: theme.green }}>Penz</Text>
+              </Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity style={[styles.profileButton, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                style={[
+                  styles.profileButton,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.cardBorder,
+                  },
+                ]}
+              >
                 {renderIcon(Search, 20, theme.muted)}
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.profileButton, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+                style={[
+                  styles.profileButton,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.cardBorder,
+                  },
+                ]}
                 onPress={handleLogout}
               >
                 {renderIcon(LogOut, 20, theme.red)}
               </TouchableOpacity>
+              {Platform.OS === 'web' && showInstallButton && (
+                <TouchableOpacity
+                  style={[
+                    styles.profileButton,
+                    {
+                      backgroundColor: theme.green,
+                      borderColor: theme.green,
+                    },
+                  ]}
+                  onPress={handleInstallPWA}
+                >
+                  {renderIcon(Download, 20, "#fff")}
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
           {/* Balance Card */}
           <View style={[styles.balanceCard, { backgroundColor: theme.green }]}>
             <Text style={styles.balanceLabel}>Total Balance</Text>
-            <Text
-              style={styles.balanceValue}
-              numberOfLines={1}
-            >
+            <Text style={styles.balanceValue} numberOfLines={1}>
               ₱{remaining.toLocaleString()}
             </Text>
             <View style={styles.balanceFooter}>
               <View style={styles.balanceInfo}>
                 {renderIcon(ArrowUpRight, 14, "#fff")}
-                <Text style={styles.balanceInfoText}>₱{totalSpent.toLocaleString()} spent</Text>
+                <Text style={styles.balanceInfoText}>
+                  ₱{totalSpent.toLocaleString()} spent
+                </Text>
               </View>
               <View style={styles.balanceInfo}>
                 {renderIcon(TrendingDown, 14, "#fff")}
-                <Text style={styles.balanceInfoText}>Budget: ₱{capital.toLocaleString()}</Text>
+                <Text style={styles.balanceInfoText}>
+                  Budget: ₱{capital.toLocaleString()}
+                </Text>
               </View>
             </View>
           </View>
 
           {/* Stats Rows */}
           <View style={styles.statsRow}>
-            <StatCard label="Expenses" value={totalSpent} color={theme.red} icon={TrendingDown} theme={theme} />
-            <StatCard label="Payroll" value={totalPayroll} color={theme.red} icon={Users} theme={theme} />
+            <StatCard
+              label="Expenses"
+              value={totalSpent}
+              color={theme.red}
+              icon={TrendingDown}
+              theme={theme}
+            />
+            <StatCard
+              label="Payroll"
+              value={totalPayroll}
+              color={theme.red}
+              icon={Users}
+              theme={theme}
+            />
           </View>
           <View style={styles.statsRow}>
-            <StatCard label="Profit" value={totalProfit} color={theme.green} icon={Wallet} theme={theme} />
+            <StatCard
+              label="Profit"
+              value={totalProfit}
+              color={theme.green}
+              icon={Wallet}
+              theme={theme}
+            />
             <StatCard
               label="Income"
               value={capital}
@@ -364,15 +549,24 @@ export default function Dashboard() {
           </View>
 
           {/* AI Insight Section */}
-          <View style={[styles.aiSection, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <View
+            style={[
+              styles.aiSection,
+              { backgroundColor: theme.card, borderColor: theme.cardBorder },
+            ]}
+          >
             <View style={styles.aiHeader}>
               <View style={styles.aiTitleRow}>
                 {renderIcon(Sparkles, 18, theme.green)}
-                <Text style={[styles.aiTitle, { color: theme.text }]}>AI Financial Advisor</Text>
+                <Text style={[styles.aiTitle, { color: theme.text }]}>
+                  AI Financial Advisor
+                </Text>
               </View>
               {aiInsight && (
                 <TouchableOpacity onPress={() => setAiInsight(null)}>
-                  <Text style={{ color: theme.muted, fontSize: 12 }}>Clear</Text>
+                  <Text style={{ color: theme.muted, fontSize: 12 }}>
+                    Clear
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -398,23 +592,47 @@ export default function Dashboard() {
                 </TouchableOpacity>
               </View>
             ) : (
-              <View style={[styles.insightBox, { backgroundColor: theme.greenGlow }]}>
-                <Text style={[styles.insightText, { color: theme.text }]}>{aiInsight}</Text>
+              <View
+                style={[
+                  styles.insightBox,
+                  { backgroundColor: theme.greenGlow },
+                ]}
+              >
+                <Text style={[styles.insightText, { color: theme.text }]}>
+                  {aiInsight}
+                </Text>
               </View>
             )}
           </View>
 
           {/* Recent Transactions */}
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Transactions</Text>
-            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-              <TouchableOpacity onPress={exportToExcel} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              Recent Transactions
+            </Text>
+            <View
+              style={{ flexDirection: "row", gap: 12, alignItems: "center" }}
+            >
+              <TouchableOpacity
+                onPress={exportToExcel}
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
                 {renderIcon(Download, 16, theme.green)}
-                <Text style={{ color: theme.green, fontWeight: '600', fontSize: 13 }}>Export</Text>
+                <Text
+                  style={{
+                    color: theme.green,
+                    fontWeight: "600",
+                    fontSize: 13,
+                  }}
+                >
+                  Export
+                </Text>
               </TouchableOpacity>
               <Link href="/(tabs)/explore" asChild>
                 <TouchableOpacity>
-                  <Text style={{ color: theme.accent, fontWeight: '600' }}>See all</Text>
+                  <Text style={{ color: theme.accent, fontWeight: "600" }}>
+                    See all
+                  </Text>
                 </TouchableOpacity>
               </Link>
             </View>
@@ -422,19 +640,43 @@ export default function Dashboard() {
 
           {expenses.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={{ color: theme.muted }}>No expenses yet. Start tracking now!</Text>
+              <Text style={{ color: theme.muted }}>
+                No expenses yet. Start tracking now!
+              </Text>
             </View>
           ) : (
             expenses.slice(0, 3).map((item) => (
-              <View key={item.id} style={[styles.transactionItem, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-                <View style={[styles.categoryIcon, { backgroundColor: theme.greenGlow }]}>
+              <View
+                key={item.id}
+                style={[
+                  styles.transactionItem,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.cardBorder,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.categoryIcon,
+                    { backgroundColor: theme.greenGlow },
+                  ]}
+                >
                   {renderIcon(Wallet, 18, theme.green)}
                 </View>
                 <View style={styles.transactionDetails}>
-                  <Text style={[styles.transactionName, { color: theme.text }]}>{item.description || item.category}</Text>
-                  <Text style={[styles.transactionDate, { color: theme.muted }]}>{item.date}</Text>
+                  <Text style={[styles.transactionName, { color: theme.text }]}>
+                    {item.description || item.category}
+                  </Text>
+                  <Text
+                    style={[styles.transactionDate, { color: theme.muted }]}
+                  >
+                    {item.date}
+                  </Text>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                >
                   <TouchableOpacity
                     onPress={() => {
                       setEditingExpense(item);
@@ -444,7 +686,11 @@ export default function Dashboard() {
                   >
                     {renderIcon(Edit2, 16, theme.muted)}
                   </TouchableOpacity>
-                  <Text style={[styles.transactionAmount, { color: theme.red }]}>-₱{item.amount.toLocaleString()}</Text>
+                  <Text
+                    style={[styles.transactionAmount, { color: theme.red }]}
+                  >
+                    -₱{item.amount.toLocaleString()}
+                  </Text>
                 </View>
               </View>
             ))
@@ -455,21 +701,24 @@ export default function Dashboard() {
       {/* Floating Add Button */}
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: theme.green }]}
-        onPress={() => router.push('/modal')}
+        onPress={() => router.push("/modal")}
       >
         {renderIcon(Plus, 24, "#fff")}
       </TouchableOpacity>
 
       {/* Income Modal */}
-      <Modal
-        visible={showIncomeModal}
-        transparent
-        animationType="fade"
-      >
+      <Modal visible={showIncomeModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.card, borderColor: theme.cardBorder },
+            ]}
+          >
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Iset ang Income</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Iset ang Income
+              </Text>
               <TouchableOpacity onPress={() => setShowIncomeModal(false)}>
                 {renderIcon(X, 20, theme.text)}
               </TouchableOpacity>
@@ -478,7 +727,14 @@ export default function Dashboard() {
               Magkano ang monthly income mo perds?
             </Text>
             <TextInput
-              style={[styles.modalInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.cardBorder }]}
+              style={[
+                styles.modalInput,
+                {
+                  color: theme.text,
+                  backgroundColor: theme.background,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
               value={tempIncome}
               onChangeText={setTempIncome}
               keyboardType="numeric"
@@ -497,24 +753,36 @@ export default function Dashboard() {
       </Modal>
 
       {/* Edit Expense Modal */}
-      <Modal
-        visible={showEditModal}
-        transparent
-        animationType="fade"
-      >
+      <Modal visible={showEditModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.card, borderColor: theme.cardBorder },
+            ]}
+          >
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Amount</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Edit Amount
+              </Text>
               <TouchableOpacity onPress={() => setShowEditModal(false)}>
                 {renderIcon(X, 20, theme.text)}
               </TouchableOpacity>
             </View>
             <Text style={[styles.modalSubtitle, { color: theme.muted }]}>
-              {editingExpense ? `${editingExpense.description || editingExpense.category} - ${editingExpense.date}` : ''}
+              {editingExpense
+                ? `${editingExpense.description || editingExpense.category} - ${editingExpense.date}`
+                : ""}
             </Text>
             <TextInput
-              style={[styles.modalInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.cardBorder }]}
+              style={[
+                styles.modalInput,
+                {
+                  color: theme.text,
+                  backgroundColor: theme.background,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
               value={tempAmount}
               onChangeText={setTempAmount}
               keyboardType="numeric"
@@ -545,23 +813,23 @@ const styles = StyleSheet.create({
   },
   mainWrapper: {
     padding: 20,
-    width: '100%',
+    width: "100%",
     maxWidth: 600,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 24,
   },
   greeting: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   brand: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: -0.5,
   },
   profileButton: {
@@ -569,47 +837,47 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 12,
     borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   balanceCard: {
     padding: 24,
     borderRadius: 24,
     marginBottom: 20,
     elevation: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
   },
   balanceLabel: {
-    color: 'rgba(255,255,255,0.8)',
+    color: "rgba(255,255,255,0.8)",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   balanceValue: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 32,
-    fontWeight: '800',
+    fontWeight: "800",
     marginTop: 4,
   },
   balanceFooter: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: 16,
     gap: 16,
   },
   balanceInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   balanceInfoText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   statsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginBottom: 20,
   },
@@ -620,26 +888,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   statHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   statLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
   },
   iconContainer: {
     width: 28,
     height: 28,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   statValue: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   aiSection: {
     padding: 20,
@@ -648,42 +916,42 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   aiHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   aiTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   aiTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   aiEmpty: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 8,
   },
   aiEmptyText: {
     fontSize: 13,
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
   },
   aiButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
   },
   aiButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   insightBox: {
     padding: 16,
@@ -692,25 +960,25 @@ const styles = StyleSheet.create({
   insightText: {
     fontSize: 14,
     lineHeight: 22,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   emptyState: {
     padding: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   transactionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
     borderRadius: 16,
     borderWidth: 1,
@@ -720,8 +988,8 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   transactionDetails: {
@@ -729,7 +997,7 @@ const styles = StyleSheet.create({
   },
   transactionName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   transactionDate: {
     fontSize: 12,
@@ -737,27 +1005,27 @@ const styles = StyleSheet.create({
   },
   transactionAmount: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   fab: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 30,
     right: 30,
     width: 60,
     height: 60,
     borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     elevation: 6,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
     padding: 20,
   },
   modalContent: {
@@ -766,14 +1034,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   modalSubtitle: {
     fontSize: 14,
@@ -785,18 +1053,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 16,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 24,
   },
   modalButton: {
     height: 56,
     borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '700',
-  }
+    fontWeight: "700",
+  },
 });

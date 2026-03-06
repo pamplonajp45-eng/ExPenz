@@ -1,18 +1,36 @@
-import { COLORS } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Expense, expenseService } from '@/services/expenseService';
-import { Calendar, Edit2, Search, Trash2, Wallet, X } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { COLORS } from "@/constants/Colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Expense, expenseService } from "@/services/expenseService";
+import {
+  Calendar,
+  Edit2,
+  Search,
+  Trash2,
+  Wallet,
+  X,
+} from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const CAT_COLORS: Record<string, string> = {
-  'Food': '#F87171',
-  'Transport': '#38BDF8',
-  'Shopping': '#A78BFA',
-  'Bills': '#FACC15',
-  'Rent': '#FB923C',
-  'Supplies': '#10B981',
+  Food: "#F87171",
+  Transport: "#38BDF8",
+  Shopping: "#A78BFA",
+  Bills: "#FACC15",
+  Rent: "#FB923C",
+  Supplies: "#10B981",
 };
 
 const renderIcon = (Icon: any, size: number, color: string) => {
@@ -21,19 +39,19 @@ const renderIcon = (Icon: any, size: number, color: string) => {
 };
 
 export default function ExpenseHistory() {
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme() ?? "light";
   const theme = COLORS[colorScheme];
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Edit Expense State
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [tempAmount, setTempAmount] = useState('');
+  const [tempAmount, setTempAmount] = useState("");
 
   useEffect(() => {
     loadData();
@@ -58,13 +76,14 @@ export default function ExpenseHistory() {
   const filterData = () => {
     let filtered = expenses;
     if (searchQuery) {
-      filtered = filtered.filter(e =>
-        (e.description?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (e.category.toLowerCase().includes(searchQuery.toLowerCase()))
+      filtered = filtered.filter(
+        (e) =>
+          e.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          e.category.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
     if (selectedCategory) {
-      filtered = filtered.filter(e => e.category === selectedCategory);
+      filtered = filtered.filter((e) => e.category === selectedCategory);
     }
     setFilteredExpenses(filtered);
   };
@@ -72,7 +91,7 @@ export default function ExpenseHistory() {
   const handleDelete = async (id: string) => {
     try {
       await expenseService.deleteExpense(id);
-      setExpenses(expenses.filter(e => e.id !== id));
+      setExpenses(expenses.filter((e) => e.id !== id));
     } catch (error) {
       console.error(error);
     }
@@ -98,22 +117,43 @@ export default function ExpenseHistory() {
   const renderItem = ({ item }: { item: Expense }) => {
     const catColor = CAT_COLORS[item.category] || theme.green;
     return (
-      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-        <View style={[styles.iconBox, { backgroundColor: catColor + '15' }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: theme.card, borderColor: theme.cardBorder },
+        ]}
+      >
+        <View style={[styles.iconBox, { backgroundColor: catColor + "15" }]}>
           {renderIcon(Wallet, 20, catColor)}
         </View>
         <View style={styles.cardInfo}>
-          <Text style={[styles.description, { color: theme.text }]}>{item.description || item.category}</Text>
+          <Text style={[styles.description, { color: theme.text }]}>
+            {item.description || item.category}
+          </Text>
           <View style={styles.cardFooter}>
-            <Text style={[styles.date, { color: theme.muted }]}>{item.date}</Text>
-            <View style={[styles.badge, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}>
-              <Text style={[styles.badgeText, { color: theme.muted }]}>{item.payment_method}</Text>
+            <Text style={[styles.date, { color: theme.muted }]}>
+              {item.date}
+            </Text>
+            <View
+              style={[
+                styles.badge,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.badgeText, { color: theme.muted }]}>
+                {item.payment_method}
+              </Text>
             </View>
           </View>
         </View>
         <View style={styles.cardRight}>
-          <Text style={[styles.amount, { color: theme.red }]}>-₱{item.amount.toLocaleString()}</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Text style={[styles.amount, { color: theme.red }]}>
+            -₱{item.amount.toLocaleString()}
+          </Text>
+          <View style={{ flexDirection: "row", gap: 8 }}>
             <TouchableOpacity
               onPress={() => {
                 setEditingExpense(item);
@@ -124,7 +164,10 @@ export default function ExpenseHistory() {
             >
               {renderIcon(Edit2, 16, theme.muted)}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteBtn}>
+            <TouchableOpacity
+              onPress={() => handleDelete(item.id)}
+              style={styles.deleteBtn}
+            >
               {renderIcon(Trash2, 16, theme.muted)}
             </TouchableOpacity>
           </View>
@@ -135,16 +178,26 @@ export default function ExpenseHistory() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center' }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: theme.background, justifyContent: "center" },
+        ]}
+      >
         <ActivityIndicator color={theme.green} size="large" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={["top"]}
+    >
       <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text }]}>Expense History</Text>
+        <Text style={[styles.title, { color: theme.text }]}>
+          Expense History
+        </Text>
         <TouchableOpacity onPress={loadData}>
           {renderIcon(Calendar, 20, theme.muted)}
         </TouchableOpacity>
@@ -152,7 +205,12 @@ export default function ExpenseHistory() {
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <View style={[styles.searchWrapper, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+        <View
+          style={[
+            styles.searchWrapper,
+            { backgroundColor: theme.card, borderColor: theme.cardBorder },
+          ]}
+        >
           {renderIcon(Search, 20, theme.muted)}
           <TextInput
             style={[styles.searchInput, { color: theme.text }]}
@@ -166,26 +224,54 @@ export default function ExpenseHistory() {
 
       {/* Categories Horizontal Scroll */}
       <View style={styles.filterContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScroll}
+        >
           <TouchableOpacity
             style={[
               styles.filterChip,
-              { backgroundColor: selectedCategory === null ? theme.green : theme.card, borderColor: selectedCategory === null ? theme.green : theme.cardBorder }
+              {
+                backgroundColor:
+                  selectedCategory === null ? theme.green : theme.card,
+                borderColor:
+                  selectedCategory === null ? theme.green : theme.cardBorder,
+              },
             ]}
             onPress={() => setSelectedCategory(null)}
           >
-            <Text style={[styles.filterText, { color: selectedCategory === null ? '#fff' : theme.muted }]}>All</Text>
+            <Text
+              style={[
+                styles.filterText,
+                { color: selectedCategory === null ? "#fff" : theme.muted },
+              ]}
+            >
+              All
+            </Text>
           </TouchableOpacity>
-          {Object.keys(CAT_COLORS).map(cat => (
+          {Object.keys(CAT_COLORS).map((cat) => (
             <TouchableOpacity
               key={cat}
               style={[
                 styles.filterChip,
-                { backgroundColor: selectedCategory === cat ? theme.green : theme.card, borderColor: selectedCategory === cat ? theme.green : theme.cardBorder }
+                {
+                  backgroundColor:
+                    selectedCategory === cat ? theme.green : theme.card,
+                  borderColor:
+                    selectedCategory === cat ? theme.green : theme.cardBorder,
+                },
               ]}
               onPress={() => setSelectedCategory(cat)}
             >
-              <Text style={[styles.filterText, { color: selectedCategory === cat ? '#fff' : theme.muted }]}>{cat}</Text>
+              <Text
+                style={[
+                  styles.filterText,
+                  { color: selectedCategory === cat ? "#fff" : theme.muted },
+                ]}
+              >
+                {cat}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -193,35 +279,49 @@ export default function ExpenseHistory() {
 
       <FlatList
         data={filteredExpenses}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={{ color: theme.muted }}>Hindi ka yata nagastos perds?</Text>
+            <Text style={{ color: theme.muted }}>
+              Hindi ka yata nagastos perds?
+            </Text>
           </View>
         }
       />
 
       {/* Edit Expense Modal */}
-      <Modal
-        visible={showEditModal}
-        transparent
-        animationType="fade"
-      >
+      <Modal visible={showEditModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.card, borderColor: theme.cardBorder },
+            ]}
+          >
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Amount</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Edit Amount
+              </Text>
               <TouchableOpacity onPress={() => setShowEditModal(false)}>
                 {renderIcon(X, 20, theme.text)}
               </TouchableOpacity>
             </View>
             <Text style={[styles.modalSubtitle, { color: theme.muted }]}>
-              {editingExpense ? `${editingExpense.description || editingExpense.category} - ${editingExpense.date}` : ''}
+              {editingExpense
+                ? `${editingExpense.description || editingExpense.category} - ${editingExpense.date}`
+                : ""}
             </Text>
             <TextInput
-              style={[styles.modalInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.cardBorder }]}
+              style={[
+                styles.modalInput,
+                {
+                  color: theme.text,
+                  backgroundColor: theme.background,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
               value={tempAmount}
               onChangeText={setTempAmount}
               keyboardType="numeric"
@@ -247,23 +347,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
   title: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   searchContainer: {
     paddingHorizontal: 20,
     marginBottom: 16,
   },
   searchWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     height: 52,
     borderRadius: 16,
@@ -289,15 +389,15 @@ const styles = StyleSheet.create({
   },
   filterText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     borderRadius: 20,
     borderWidth: 1,
@@ -307,8 +407,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 16,
   },
   cardInfo: {
@@ -316,12 +416,12 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 4,
   },
   cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   date: {
@@ -335,15 +435,15 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   cardRight: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
     gap: 8,
   },
   amount: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   deleteBtn: {
     padding: 4,
@@ -353,30 +453,30 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     padding: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
-    width: '90%',
+    width: "90%",
     maxWidth: 400,
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   modalSubtitle: {
     fontSize: 14,
@@ -393,12 +493,12 @@ const styles = StyleSheet.create({
   modalButton: {
     height: 50,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
-  }
+    fontWeight: "600",
+  },
 });

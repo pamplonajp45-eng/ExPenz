@@ -86,13 +86,18 @@ Max 4-5 sentences. No judgment energy — just straight, actionable, human advic
     } catch (error: any) {
       console.error("Gemini Error:", error);
 
+      // Check if API key is not configured
+      if (error.message?.includes("No Gemini API keys") || !getTotalKeys()) {
+        return "🔧 AI Coach is not configured yet. Add your Gemini API keys to use this feature!";
+      }
+
       // Check if this is a quota error and try next key
       const isQuotaError =
         error.message?.includes("429") || error.message?.includes("quota");
       if (isQuotaError && getTotalKeys() > 1) {
         console.log("⚠️ Key quota exceeded, rotating to next key...");
-        const nextKeyModel = rotateAPIKey();
         try {
+          const nextKeyModel = rotateAPIKey();
           const retryResult = await nextKeyModel.generateContent(prompt);
           const retryResponse = await retryResult.response;
           console.log(

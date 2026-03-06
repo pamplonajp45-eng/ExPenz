@@ -35,5 +35,34 @@ export const getModelWithRotation = getModel; // Export getter function
 
 console.log("🔑 Gemini Config: ", API_KEYS.length, "keys loaded");
 
+// Lazy initialization - only create model when first needed
+let modelInstance: any = null;
+
+const initModel = () => {
+  if (modelInstance) return modelInstance;
+  
+  if (API_KEYS.length === 0) {
+    console.warn("⚠️ No Gemini API keys configured. AI features will be disabled.");
+    // Return a mock model that fails gracefully
+    modelInstance = {
+      generateContent: async () => ({
+        response: {
+          text: () => "AI features are not configured. Please add your Gemini API keys to .env.local"
+        }
+      })
+    };
+    return modelInstance;
+  }
+  
+  modelInstance = getModel();
+  return modelInstance;
+};
+
 // Using gemini-flash-latest as "gemini-1.5-flash" is not found for this project
-export const model = getModel();
+// Export a wrapper that initializes the model lazily
+export const model = {
+  generateContent: async (prompt: string) => {
+    const m = initModel();
+    return await m.generateContent(prompt);
+  }
+} as any;

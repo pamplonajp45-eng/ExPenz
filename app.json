@@ -30,7 +30,10 @@
       "themeColor": "#10b981",
       "backgroundColor": "#000000",
       "display": "standalone",
-      "orientation": "portrait"
+      "orientation": "portrait",
+      "meta": {
+        "manifest": "/manifest.json"
+      }
     },
     "plugins": [
       "expo-router",

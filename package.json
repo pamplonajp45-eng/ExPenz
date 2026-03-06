@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build": "npx expo export --platform web",
+    "build": "npx expo export --platform web && npm run postbuild",
+    "postbuild": "node postbuild.js",
     "lint": "expo lint"
   },
   "dependencies": {

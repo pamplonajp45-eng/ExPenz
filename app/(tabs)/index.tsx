@@ -115,42 +115,52 @@ export default function Dashboard() {
   // PWA Install State
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
+  // Initial load on mount
+  React.useEffect(() => {
+    loadData();
+  }, []);
+
+  // Lazy load data on tab focus (only if data was cleared)
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, []),
+      if (!dataLoaded) {
+        loadData();
+      }
+    }, [dataLoaded]),
   );
 
-  // PWA Install Prompt
+  // Lazy load PWA and service worker
   React.useEffect(() => {
     if (Platform.OS === "web") {
-      // Register service worker
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((registration) => {
-            console.log("Service Worker registered:", registration);
-          })
-          .catch((error) => {
-            console.log("Service Worker registration failed:", error);
-          });
-      }
+      const timer = setTimeout(() => {
+        // Defer service worker registration
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .catch((error) => {
+              console.log("Service Worker registration failed:", error);
+            });
+        }
 
-      const handleBeforeInstallPrompt = (e: any) => {
-        e.preventDefault();
-        setDeferredPrompt(e);
-        setShowInstallButton(true);
-      };
+        const handleBeforeInstallPrompt = (e: any) => {
+          e.preventDefault();
+          setDeferredPrompt(e);
+          setShowInstallButton(true);
+        };
 
-      window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+        window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
-      return () => {
-        window.removeEventListener(
-          "beforeinstallprompt",
-          handleBeforeInstallPrompt,
-        );
-      };
+        return () => {
+          window.removeEventListener(
+            "beforeinstallprompt",
+            handleBeforeInstallPrompt,
+          );
+        };
+      }, 2000); // Register service worker after 2 seconds
+
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -164,17 +174,26 @@ export default function Dashboard() {
         return;
       }
 
-      const [expenseData, profileData, payrollData, utangData] =
-        await Promise.all([
-          expenseService.getExpenses(),
-          profileService.getProfile(),
-          payrollService.getPayrollEntries(),
-          utangService.getUtangs(),
-        ]);
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Data load timeout')), 10000)
+      );
 
-      setExpenses(expenseData);
-      setPayrollEntries(payrollData);
-      setUtangs(utangData);
+      const dataPromises = Promise.all([
+        expenseService.getExpenses(),
+        profileService.getProfile(),
+        payrollService.getPayrollEntries(),
+        utangService.getUtangs(),
+      ]);
+
+      const [expenseData, profileData, payrollData, utangData] = await Promise.race([
+        dataPromises,
+        timeoutPromise
+      ]) as any;
+
+      setExpenses(expenseData || []);
+      setPayrollEntries(payrollData || []);
+      setUtangs(utangData || []);
 
       if (profileData) {
         setProfile(profileData);
@@ -184,11 +203,15 @@ export default function Dashboard() {
         setProfile(newProfile);
         setTempIncome(newProfile.monthly_income.toString());
       }
+      
+      setDataLoaded(true);
     } catch (error: any) {
       console.error("Dashboard error:", error);
       if (error.message?.includes("authenticated")) {
         router.replace("/auth");
       }
+      // Set dataLoaded to true even on error to prevent infinite loading
+      setDataLoaded(true);
     } finally {
       setLoading(false);
     }
@@ -290,23 +313,37 @@ export default function Dashboard() {
   const getAIInsight = async () => {
     setAnalyzing(true);
     try {
-      const insight = await aiService.generateInsights(
+      // Add timeout for AI request (15 seconds max)
+      const insightPromise = aiService.generateInsights(
         expenses,
         capital,
         utangs,
-      ); // 👈 add utangs
-      setAiInsight(insight);
+      );
+      
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('AI request timeout')), 15000)
+      );
+
+      const insight = await Promise.race([
+        insightPromise,
+        timeoutPromise
+      ]);
+
+      setAiInsight(insight as string);
       setQuotaExceeded(false);
     } catch (error: any) {
       console.error("AI Error:", error.message);
       const isQuotaError =
         error.message?.includes("429") || error.message?.includes("quota");
+      const isTimeout = error.message?.includes("timeout");
 
       if (isQuotaError) {
         setQuotaExceeded(true);
         setAiInsight(
           "🚫 Daily quota exceeded! AI Coach will be back tomorrow.",
         );
+      } else if (isTimeout) {
+        setAiInsight("⏱️ AI Coach ay nag-hangover ngayong oras. Try again later!");
       } else {
         setAiInsight("Medyo busy ang AI advisor mo. Subukan uli mamaya!");
       }

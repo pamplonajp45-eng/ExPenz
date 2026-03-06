@@ -18,6 +18,7 @@ export default function PayrollScreen() {
     const [entries, setEntries] = useState<PayrollEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [dataLoaded, setDataLoaded] = useState(false);
 
     // New Entry State
     const [newName, setNewName] = useState('');
@@ -25,16 +26,31 @@ export default function PayrollScreen() {
     const [week2, setWeek2] = useState('');
 
     useEffect(() => {
-        loadData();
-    }, []);
+        if (!dataLoaded) {
+            loadData();
+        }
+    }, [dataLoaded]);
 
     const loadData = async () => {
         setLoading(true);
         try {
-            const data = await payrollService.getPayrollEntries();
-            setEntries(data);
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Load payroll timeout')), 8000)
+            );
+
+            const dataPromise = payrollService.getPayrollEntries();
+
+            const data = await Promise.race([
+              dataPromise,
+              timeoutPromise
+            ]) as PayrollEntry[];
+
+            setEntries(data || []);
+            setDataLoaded(true);
         } catch (error) {
             console.error(error);
+            setEntries([]);
+            setDataLoaded(true);
         } finally {
             setLoading(false);
         }
@@ -47,7 +63,7 @@ export default function PayrollScreen() {
         }
 
         try {
-            await payrollService.savePayrollEntry({
+            const newEntry = await payrollService.savePayrollEntry({
                 employee_name: newName,
                 week1: parseFloat(week1) || 0,
                 week2: parseFloat(week2) || 0,
@@ -57,7 +73,8 @@ export default function PayrollScreen() {
             setNewName('');
             setWeek1('');
             setWeek2('');
-            loadData();
+            // Add the new entry to state instead of reloading
+            setEntries([newEntry, ...entries]);
         } catch (error) {
             Alert.alert("Error", "Hindi na-save yung payroll perds.");
         }
@@ -66,7 +83,8 @@ export default function PayrollScreen() {
     const handleDelete = async (id: string) => {
         try {
             await payrollService.deletePayrollEntry(id);
-            loadData();
+            // Remove from state instead of reloading
+            setEntries(entries.filter(e => e.id !== id));
         } catch (error) {
             Alert.alert("Error", "Hindi nabura perds.");
         }

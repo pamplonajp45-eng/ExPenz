@@ -47,6 +47,7 @@ export default function ExpenseHistory() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Edit Expense State
   const [showEditModal, setShowEditModal] = useState(false);
@@ -54,8 +55,10 @@ export default function ExpenseHistory() {
   const [tempAmount, setTempAmount] = useState("");
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!dataLoaded) {
+      loadData();
+    }
+  }, [dataLoaded]);
 
   useEffect(() => {
     filterData();
@@ -64,10 +67,23 @@ export default function ExpenseHistory() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await expenseService.getExpenses();
-      setExpenses(data);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Load expenses timeout')), 8000)
+      );
+
+      const dataPromise = expenseService.getExpenses();
+
+      const data = await Promise.race([
+        dataPromise,
+        timeoutPromise
+      ]) as Expense[];
+
+      setExpenses(data || []);
+      setDataLoaded(true);
     } catch (error) {
       console.error(error);
+      setExpenses([]); // Set empty array on error
+      setDataLoaded(true); // Still mark as loaded to prevent infinite tries
     } finally {
       setLoading(false);
     }
@@ -104,8 +120,9 @@ export default function ExpenseHistory() {
       try {
         await expenseService.updateExpenseAmount(editingExpense.id, val);
         setShowEditModal(false);
+        // Update the expense in state instead of reloading all data
+        setExpenses(expenses.map(e => e.id === editingExpense.id ? {...e, amount: val} : e));
         setEditingExpense(null);
-        loadData(); // Refresh data
       } catch (e) {
         Alert.alert("Error", "Hindi na-save ang amount.");
       }

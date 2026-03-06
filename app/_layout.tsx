@@ -20,14 +20,48 @@ export default function RootLayout() {
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setInitialized(true);
+    let mounted = true;
+    let timeoutId: NodeJS.Timeout;
+
+    const initializeAuth = async () => {
+      try {
+        // Add 5 second timeout for session check
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Session check timeout')), 5000)
+        );
+
+        const { data: { session } } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as any;
+
+        if (mounted) {
+          setSession(session);
+          setInitialized(true);
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setSession(null);
+          setInitialized(true); // Still initialize even on timeout
+        }
+      }
+    };
+
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (mounted) {
+        setSession(session);
+      }
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+    return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
+      subscription?.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {

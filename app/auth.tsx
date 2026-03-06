@@ -56,17 +56,31 @@ export default function AuthScreen() {
             return;
         }
         setLoading(true);
-        const { error } = await supabase.auth.signInWithPassword({
+        try {
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Sign in timeout')), 10000)
+          );
+
+          const signInPromise = supabase.auth.signInWithPassword({
             email: email,
             password: password,
-        });
+          });
 
-        if (error) {
+          const { error } = await Promise.race([
+            signInPromise,
+            timeoutPromise
+          ]) as any;
+
+          if (error) {
             Alert.alert('Error', error.message);
-        } else {
+          } else {
             router.replace('/(tabs)');
+          }
+        } catch (error: any) {
+          Alert.alert('Error', error.message || 'Sign in failed. Check your connection.');
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
     }
 
     async function sendOtp() {
@@ -75,22 +89,36 @@ export default function AuthScreen() {
             return;
         }
         setLoading(true);
-        const { error } = await supabase.auth.signInWithOtp({
+        try {
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('OTP send timeout')), 10000)
+          );
+
+          const otpPromise = supabase.auth.signInWithOtp({
             email,
             options: {
                 data: {
                     full_name: fullName,
                 },
             },
-        });
+          });
 
-        if (error) {
+          const { error } = await Promise.race([
+            otpPromise,
+            timeoutPromise
+          ]) as any;
+
+          if (error) {
             Alert.alert('Error', error.message);
-        } else {
+          } else {
             setSignUpStep('otp');
             Alert.alert('Success!', 'Check mo yung email mo for the verification code.');
+          }
+        } catch (error: any) {
+          Alert.alert('Error', error.message || 'OTP send failed. Check your connection.');
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
     }
 
     async function verifyOtpCode() {
@@ -99,19 +127,33 @@ export default function AuthScreen() {
             return;
         }
         setLoading(true);
-        const { error } = await supabase.auth.verifyOtp({
+        try {
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('OTP verify timeout')), 10000)
+          );
+
+          const verifyPromise = supabase.auth.verifyOtp({
             email,
             token: otp,
             type: 'email',
-        });
+          });
 
-        if (error) {
+          const { error } = await Promise.race([
+            verifyPromise,
+            timeoutPromise
+          ]) as any;
+
+          if (error) {
             Alert.alert('Error', error.message);
-        } else {
+          } else {
             setSignUpStep('password');
             Alert.alert('Verified!', 'Setup mo na password mo perds.');
+          }
+        } catch (error: any) {
+          Alert.alert('Error', error.message || 'Verification failed. Check your connection.');
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
     }
 
     async function handleForgotPassword() {
@@ -121,7 +163,16 @@ export default function AuthScreen() {
         }
         setLoading(true);
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Password reset timeout')), 10000)
+            );
+
+            const resetPromise = supabase.auth.resetPasswordForEmail(email);
+
+            const { error } = await Promise.race([
+              resetPromise,
+              timeoutPromise
+            ]) as any;
 
             if (error) {
                 Alert.alert('Error', error.message);
@@ -129,8 +180,8 @@ export default function AuthScreen() {
                 setForgotPasswordStep('otp');
                 Alert.alert('Success!', 'Check mo yung email mo para sa recovery code perds.');
             }
-        } catch (err) {
-            Alert.alert('Error', 'Nagkaproblema perds. Try again later.');
+        } catch (err: any) {
+            Alert.alert('Error', err.message || 'Nagkaproblema perds. Try again later.');
         } finally {
             setLoading(false);
         }

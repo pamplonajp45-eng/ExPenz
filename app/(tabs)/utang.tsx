@@ -36,6 +36,7 @@ export default function UtangScreen() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [utangs, setUtangs] = useState<Utang[]>([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Modals
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -64,20 +65,35 @@ export default function UtangScreen() {
       if (!session) {
         router.replace("/auth");
       } else {
-        fetchData();
+        if (!dataLoaded) {
+          fetchData();
+        }
       }
     };
     checkAuth();
-  }, []);
+  }, [dataLoaded]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const data = await utangService.getUtangs();
-      setUtangs(data);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Load utangs timeout')), 8000)
+      );
+
+      const dataPromise = utangService.getUtangs();
+
+      const data = await Promise.race([
+        dataPromise,
+        timeoutPromise
+      ]) as Utang[];
+
+      setUtangs(data || []);
+      setDataLoaded(true);
     } catch (error) {
       console.error("Error fetching utangs:", error);
       Alert.alert("Error", "Hindi ma-load yung listahan mo perds.");
+      setUtangs([]);
+      setDataLoaded(true);
     } finally {
       setLoading(false);
     }
@@ -100,7 +116,7 @@ export default function UtangScreen() {
 
     try {
       setActionLoading(true);
-      await utangService.addUtang({
+      const newUtang = await utangService.addUtang({
         type: newType,
         person_name: newName,
         amount: parseFloat(newAmount),
@@ -126,7 +142,9 @@ export default function UtangScreen() {
       setNewAmount("");
       setNewReason("");
       setNewDueDate("");
-      fetchData();
+      
+      // Add to state instead of reloading
+      setUtangs([newUtang, ...utangs]);
     } catch (error) {
       console.error("Error adding:", error);
       Alert.alert("Error", "Ulitin mo perds, nagka-error.");
@@ -154,7 +172,15 @@ export default function UtangScreen() {
       );
       setPaymentModalVisible(false);
       setPaymentAmount("");
-      fetchData();
+      
+      // Update state instead of reloading
+      const updatedUtangs = utangs.map(u => 
+        u.id === selectedUtang.id 
+          ? { ...u, balance: u.balance - amount }
+          : u
+      );
+      setUtangs(updatedUtangs);
+      setSelectedUtang(null);
     } catch (error) {
       console.error("Error paying:", error);
       Alert.alert("Error", "Nagkaproblema sa system perds.");
@@ -180,9 +206,9 @@ export default function UtangScreen() {
       await utangService.deleteUtang(utangToDelete);
       console.log("✔️ Delete successful");
 
-      console.log("🔄 Fetching updated data...");
-      await fetchData();
-      console.log("✔️ Data fetched successfully");
+      // Update state instead of fetching all data
+      setUtangs(utangs.filter(u => u.id !== utangToDelete));
+      console.log("✔️ State updated");
 
       setDeleteConfirmVisible(false);
       setUtangToDelete(null);

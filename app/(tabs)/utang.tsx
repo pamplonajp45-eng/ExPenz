@@ -1,11 +1,9 @@
 import { COLORS } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@/lib/supabase';
-import { aiService } from '@/services/aiService';
 import { Utang, utangService } from '@/services/utangService';
-import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
-import { Check, Edit2, HandCoins, NotebookTabs, Plus, Trash2 } from 'lucide-react-native';
+import { Check, HandCoins, NotebookTabs, Plus, Trash2 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -147,30 +145,6 @@ export default function UtangScreen() {
         )
     };
 
-    const handleGenerateAIReminder = async (utang: Utang) => {
-        setActionLoading(true);
-        try {
-            const message = await aiService.generateUtangFollowUpMessage(
-                utang.person_name,
-                utang.balance,
-                utang.reason || "personal na rason",
-                utang.due_date || "asap",
-                utang.type
-            );
-
-            Alert.alert(
-                "AI Message Generator",
-                message + "\n\n(Kinopya ko na sa clipboard mo perds!)",
-                [{ text: "Okay", onPress: () => Clipboard.setStringAsync(message) }]
-            );
-
-        } catch (error) {
-            Alert.alert("Error", "Awtsss nagka-aberya sa AI.");
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
     if (loading && utangs.length === 0) {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center' }]}>
@@ -263,19 +237,6 @@ export default function UtangScreen() {
                                     >
                                         <HandCoins size={16} color={theme.text} />
                                         <Text style={[styles.actionBtnText, { color: theme.text }]}>Log Payment</Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity
-                                        style={[styles.aiButton, { backgroundColor: theme.green + '20' }]}
-                                        onPress={() => handleGenerateAIReminder(utang)}
-                                        disabled={actionLoading}
-                                    >
-                                        {actionLoading ? <ActivityIndicator size="small" color={theme.green} /> : (
-                                            <>
-                                                <Edit2 size={14} color={theme.green} />
-                                                <Text style={[styles.aiBtnText, { color: theme.green }]}>Draft Message</Text>
-                                            </>
-                                        )}
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -548,19 +509,6 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     actionBtnText: {
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    aiButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 10,
-        borderRadius: 12,
-        gap: 6,
-    },
-    aiBtnText: {
         fontSize: 13,
         fontWeight: '600',
     },

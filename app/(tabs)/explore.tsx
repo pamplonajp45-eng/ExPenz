@@ -1,9 +1,9 @@
 import { COLORS } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Expense, expenseService } from '@/services/expenseService';
-import { Calendar, Search, Trash2, Wallet } from 'lucide-react-native';
+import { Calendar, Edit2, Search, Trash2, Wallet, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const CAT_COLORS: Record<string, string> = {
@@ -29,6 +29,11 @@ export default function ExpenseHistory() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // Edit Expense State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [tempAmount, setTempAmount] = useState('');
 
   useEffect(() => {
     loadData();
@@ -73,6 +78,23 @@ export default function ExpenseHistory() {
     }
   };
 
+  const saveExpenseAmount = async () => {
+    if (!editingExpense) return;
+    const val = Number(tempAmount);
+    if (!isNaN(val) && val >= 0) {
+      try {
+        await expenseService.updateExpenseAmount(editingExpense.id, val);
+        setShowEditModal(false);
+        setEditingExpense(null);
+        loadData(); // Refresh data
+      } catch (e) {
+        Alert.alert("Error", "Hindi na-save ang amount.");
+      }
+    } else {
+      Alert.alert("Invalid Amount", "Pakilagay naman ng tamang numero perds.");
+    }
+  };
+
   const renderItem = ({ item }: { item: Expense }) => {
     const catColor = CAT_COLORS[item.category] || theme.green;
     return (
@@ -91,9 +113,21 @@ export default function ExpenseHistory() {
         </View>
         <View style={styles.cardRight}>
           <Text style={[styles.amount, { color: theme.red }]}>-₱{item.amount.toLocaleString()}</Text>
-          <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteBtn}>
-            {renderIcon(Trash2, 16, theme.muted)}
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => {
+                setEditingExpense(item);
+                setTempAmount(item.amount.toString());
+                setShowEditModal(true);
+              }}
+              style={styles.editBtn}
+            >
+              {renderIcon(Edit2, 16, theme.muted)}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteBtn}>
+              {renderIcon(Trash2, 16, theme.muted)}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -168,6 +202,42 @@ export default function ExpenseHistory() {
           </View>
         }
       />
+
+      {/* Edit Expense Modal */}
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Amount</Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                {renderIcon(X, 20, theme.text)}
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.modalSubtitle, { color: theme.muted }]}>
+              {editingExpense ? `${editingExpense.description || editingExpense.category} - ${editingExpense.date}` : ''}
+            </Text>
+            <TextInput
+              style={[styles.modalInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.cardBorder }]}
+              value={tempAmount}
+              onChangeText={setTempAmount}
+              keyboardType="numeric"
+              placeholder="0"
+              placeholderTextColor={theme.muted}
+              autoFocus
+            />
+            <TouchableOpacity
+              style={[styles.modalButton, { backgroundColor: theme.green }]}
+              onPress={saveExpenseAmount}
+            >
+              <Text style={styles.modalButtonText}>Save Amount</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -278,8 +348,57 @@ const styles = StyleSheet.create({
   deleteBtn: {
     padding: 4,
   },
+  editBtn: {
+    padding: 4,
+  },
   emptyState: {
     padding: 40,
     alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  modalInput: {
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  modalButton: {
+    height: 50,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   }
 });

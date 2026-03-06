@@ -63,6 +63,11 @@ export default function Dashboard() {
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [tempIncome, setTempIncome] = useState('');
 
+  // Expense Editing State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [tempAmount, setTempAmount] = useState('');
+
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -147,6 +152,23 @@ export default function Dashboard() {
         setShowIncomeModal(false);
       } catch (e) {
         Alert.alert("Error", "Hindi na-save ang budget.");
+      }
+    } else {
+      Alert.alert("Invalid Amount", "Pakilagay naman ng tamang numero perds.");
+    }
+  };
+
+  const saveExpenseAmount = async () => {
+    if (!editingExpense) return;
+    const val = Number(tempAmount);
+    if (!isNaN(val) && val >= 0) {
+      try {
+        await expenseService.updateExpenseAmount(editingExpense.id, val);
+        setShowEditModal(false);
+        setEditingExpense(null);
+        loadData(); // Refresh data
+      } catch (e) {
+        Alert.alert("Error", "Hindi na-save ang amount.");
       }
     } else {
       Alert.alert("Invalid Amount", "Pakilagay naman ng tamang numero perds.");
@@ -412,7 +434,18 @@ export default function Dashboard() {
                   <Text style={[styles.transactionName, { color: theme.text }]}>{item.description || item.category}</Text>
                   <Text style={[styles.transactionDate, { color: theme.muted }]}>{item.date}</Text>
                 </View>
-                <Text style={[styles.transactionAmount, { color: theme.red }]}>-₱{item.amount.toLocaleString()}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEditingExpense(item);
+                      setTempAmount(item.amount.toString());
+                      setShowEditModal(true);
+                    }}
+                  >
+                    {renderIcon(Edit2, 16, theme.muted)}
+                  </TouchableOpacity>
+                  <Text style={[styles.transactionAmount, { color: theme.red }]}>-₱{item.amount.toLocaleString()}</Text>
+                </View>
               </View>
             ))
           )}
@@ -458,6 +491,42 @@ export default function Dashboard() {
               onPress={saveIncome}
             >
               <Text style={styles.modalButtonText}>Save Budget</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Expense Modal */}
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Amount</Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                {renderIcon(X, 20, theme.text)}
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.modalSubtitle, { color: theme.muted }]}>
+              {editingExpense ? `${editingExpense.description || editingExpense.category} - ${editingExpense.date}` : ''}
+            </Text>
+            <TextInput
+              style={[styles.modalInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.cardBorder }]}
+              value={tempAmount}
+              onChangeText={setTempAmount}
+              keyboardType="numeric"
+              placeholder="0"
+              placeholderTextColor={theme.muted}
+              autoFocus
+            />
+            <TouchableOpacity
+              style={[styles.modalButton, { backgroundColor: theme.green }]}
+              onPress={saveExpenseAmount}
+            >
+              <Text style={styles.modalButtonText}>Save Amount</Text>
             </TouchableOpacity>
           </View>
         </View>

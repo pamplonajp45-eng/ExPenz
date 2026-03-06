@@ -90,7 +90,7 @@ export default function AddExpenseModal() {
 
           {/* Description */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.muted }]}>What's this for?</Text>
+            <Text style={[styles.label, { color: theme.muted }]}>What&apos;s this for?</Text>
             <TextInput
               style={[styles.textInput, { color: theme.text, backgroundColor: theme.card, borderColor: theme.cardBorder }]}
               placeholder="e.g. Lunch with friends"

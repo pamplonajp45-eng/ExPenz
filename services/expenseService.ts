@@ -50,5 +50,16 @@ export const expenseService = {
             .eq('user_id', user.id); // Guard for security
 
         if (error) throw error;
+    },
+
+    async updateExpenseAmount(id: string, amount: number) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+        const { error } = await supabase
+            .from('expenses')
+            .update({ amount })
+            .eq('id', id)
+            .eq('user_id', user.id);
+        if (error) throw error;
     }
 };

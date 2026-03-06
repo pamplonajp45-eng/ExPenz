@@ -6,7 +6,7 @@ import { Expense, expenseService } from "@/services/expenseService";
 import { PayrollEntry, payrollService } from "@/services/payrollService";
 import { Profile, profileService } from "@/services/profileService";
 import { utangService } from "@/services/utangService";
-import { Link, useFocusEffect, useRouter } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import {
   ArrowUpRight,
   Download,
@@ -20,7 +20,7 @@ import {
   Wallet,
   X,
 } from "lucide-react-native";
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -123,13 +123,10 @@ export default function Dashboard() {
   }, []);
 
   // Lazy load data on tab focus (only if data was cleared)
-  useFocusEffect(
-    useCallback(() => {
-      if (!dataLoaded) {
-        loadData();
-      }
-    }, [dataLoaded]),
-  );
+  // Initial load on mount
+  React.useEffect(() => {
+    loadData();
+  }, []);
 
   // Lazy load PWA and service worker
   React.useEffect(() => {
@@ -137,11 +134,9 @@ export default function Dashboard() {
       const timer = setTimeout(() => {
         // Defer service worker registration
         if ("serviceWorker" in navigator) {
-          navigator.serviceWorker
-            .register("/sw.js")
-            .catch((error) => {
-              console.log("Service Worker registration failed:", error);
-            });
+          navigator.serviceWorker.register("/sw.js").catch((error) => {
+            console.log("Service Worker registration failed:", error);
+          });
         }
 
         const handleBeforeInstallPrompt = (e: any) => {
@@ -150,7 +145,10 @@ export default function Dashboard() {
           setShowInstallButton(true);
         };
 
-        window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+        window.addEventListener(
+          "beforeinstallprompt",
+          handleBeforeInstallPrompt,
+        );
 
         return () => {
           window.removeEventListener(
@@ -165,18 +163,27 @@ export default function Dashboard() {
   }, []);
 
   const loadData = async () => {
+    setLoading(true);
     try {
+      // Timeout for user check
+      const userPromise = supabase.auth.getUser();
+      const userTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("User check timeout")), 2000),
+      );
+
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = (await Promise.race([userPromise, userTimeout])) as any;
+
       if (!user) {
+        console.log("No user found - redirecting to auth");
         router.replace("/auth");
         return;
       }
 
-      // Add timeout to prevent hanging (7s max for Vercel)
+      // Add timeout to prevent hanging (6s max for data)
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Data load timeout')), 7000)
+        setTimeout(() => reject(new Error("Data load timeout")), 6000),
       );
 
       const dataPromises = Promise.all([
@@ -186,10 +193,8 @@ export default function Dashboard() {
         utangService.getUtangs(),
       ]);
 
-      const [expenseData, profileData, payrollData, utangData] = await Promise.race([
-        dataPromises,
-        timeoutPromise
-      ]) as any;
+      const [expenseData, profileData, payrollData, utangData] =
+        (await Promise.race([dataPromises, timeoutPromise])) as any;
 
       setExpenses(expenseData || []);
       setPayrollEntries(payrollData || []);
@@ -204,12 +209,12 @@ export default function Dashboard() {
           setProfile(newProfile);
           setTempIncome(newProfile.monthly_income.toString());
         } catch (err) {
-          console.warn('Could not create profile, using defaults');
+          console.warn("Could not create profile, using defaults");
           setProfile(null);
-          setTempIncome('50000');
+          setTempIncome("50000");
         }
       }
-      
+
       setDataLoaded(true);
     } catch (error: any) {
       console.error("Dashboard error:", error?.message);
@@ -217,13 +222,13 @@ export default function Dashboard() {
         router.replace("/auth");
         return;
       }
-      
+
       // Set default empty state on error so page still displays
       setExpenses([]);
       setPayrollEntries([]);
       setUtangs([]);
       setProfile(null);
-      setTempIncome('50000');
+      setTempIncome("50000");
       setDataLoaded(true);
     } finally {
       setLoading(false);
@@ -332,15 +337,12 @@ export default function Dashboard() {
         capital,
         utangs,
       );
-      
+
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('AI request timeout')), 15000)
+        setTimeout(() => reject(new Error("AI request timeout")), 15000),
       );
 
-      const insight = await Promise.race([
-        insightPromise,
-        timeoutPromise
-      ]);
+      const insight = await Promise.race([insightPromise, timeoutPromise]);
 
       setAiInsight(insight as string);
       setQuotaExceeded(false);
@@ -356,7 +358,9 @@ export default function Dashboard() {
           "🚫 Daily quota exceeded! AI Coach will be back tomorrow.",
         );
       } else if (isTimeout) {
-        setAiInsight("⏱️ AI Coach ay nag-hangover ngayong oras. Try again later!");
+        setAiInsight(
+          "⏱️ AI Coach ay nag-hangover ngayong oras. Try again later!",
+        );
       } else {
         setAiInsight("Medyo busy ang AI advisor mo. Subukan uli mamaya!");
       }

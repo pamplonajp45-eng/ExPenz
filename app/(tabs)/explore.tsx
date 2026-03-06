@@ -69,20 +69,20 @@ export default function ExpenseHistory() {
     try {
       // Aggressive timeout for Vercel (6s max)
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Load expenses timeout')), 6000)
+        setTimeout(() => reject(new Error("Load expenses timeout")), 6000),
       );
 
       const dataPromise = expenseService.getExpenses();
 
-      const data = await Promise.race([
+      const data = (await Promise.race([
         dataPromise,
-        timeoutPromise
-      ]) as Expense[];
+        timeoutPromise,
+      ])) as Expense[];
 
       setExpenses(data || []);
       setDataLoaded(true);
     } catch (error: any) {
-      console.warn('Expenses load failed:', error?.message || 'Unknown error');
+      console.warn("Expenses load failed:", error?.message || "Unknown error");
       setExpenses([]); // Set empty array on error
       setDataLoaded(true); // Still mark as loaded to prevent infinite tries
     } finally {
@@ -122,7 +122,11 @@ export default function ExpenseHistory() {
         await expenseService.updateExpenseAmount(editingExpense.id, val);
         setShowEditModal(false);
         // Update the expense in state instead of reloading all data
-        setExpenses(expenses.map(e => e.id === editingExpense.id ? {...e, amount: val} : e));
+        setExpenses(
+          expenses.map((e) =>
+            e.id === editingExpense.id ? { ...e, amount: val } : e,
+          ),
+        );
         setEditingExpense(null);
       } catch (e) {
         Alert.alert("Error", "Hindi na-save ang amount.");

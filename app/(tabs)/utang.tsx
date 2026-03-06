@@ -77,15 +77,15 @@ export default function UtangScreen() {
     try {
       setLoading(true);
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Load utangs timeout')), 6000)
+        setTimeout(() => reject(new Error("Load utangs timeout")), 6000),
       );
 
       const dataPromise = utangService.getUtangs();
 
-      const data = await Promise.race([
+      const data = (await Promise.race([
         dataPromise,
-        timeoutPromise
-      ]) as Utang[];
+        timeoutPromise,
+      ])) as Utang[];
 
       setUtangs(data || []);
       setDataLoaded(true);
@@ -142,7 +142,7 @@ export default function UtangScreen() {
       setNewAmount("");
       setNewReason("");
       setNewDueDate("");
-      
+
       // Add to state instead of reloading
       setUtangs([newUtang, ...utangs]);
     } catch (error) {
@@ -172,12 +172,10 @@ export default function UtangScreen() {
       );
       setPaymentModalVisible(false);
       setPaymentAmount("");
-      
+
       // Update state instead of reloading
-      const updatedUtangs = utangs.map(u => 
-        u.id === selectedUtang.id 
-          ? { ...u, balance: u.balance - amount }
-          : u
+      const updatedUtangs = utangs.map((u) =>
+        u.id === selectedUtang.id ? { ...u, balance: u.balance - amount } : u,
       );
       setUtangs(updatedUtangs);
       setSelectedUtang(null);
@@ -207,7 +205,7 @@ export default function UtangScreen() {
       console.log("✔️ Delete successful");
 
       // Update state instead of fetching all data
-      setUtangs(utangs.filter(u => u.id !== utangToDelete));
+      setUtangs(utangs.filter((u) => u.id !== utangToDelete));
       console.log("✔️ State updated");
 
       setDeleteConfirmVisible(false);

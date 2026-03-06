@@ -40,20 +40,23 @@ let modelInstance: any = null;
 
 const initModel = () => {
   if (modelInstance) return modelInstance;
-  
+
   if (API_KEYS.length === 0) {
-    console.warn("⚠️ No Gemini API keys configured. AI features will be disabled.");
+    console.warn(
+      "⚠️ No Gemini API keys configured. AI features will be disabled.",
+    );
     // Return a mock model that fails gracefully
     modelInstance = {
       generateContent: async () => ({
         response: {
-          text: () => "AI features are not configured. Please add your Gemini API keys to .env.local"
-        }
-      })
+          text: () =>
+            "AI features are not configured. Please add your Gemini API keys to .env.local",
+        },
+      }),
     };
     return modelInstance;
   }
-  
+
   modelInstance = getModel();
   return modelInstance;
 };
@@ -64,5 +67,5 @@ export const model = {
   generateContent: async (prompt: string) => {
     const m = initModel();
     return await m.generateContent(prompt);
-  }
+  },
 } as any;

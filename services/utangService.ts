@@ -25,11 +25,15 @@ export interface Utang {
 }
 
 export const utangService = {
-  async getUtangs() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error("User not authenticated");
+  async getUtangs(userId?: string) {
+    let user_id = userId;
+    if (!user_id) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+      user_id = user.id;
+    }
 
     const { data, error } = await supabase
       .from("utangs")
@@ -39,7 +43,7 @@ export const utangService = {
                 payments:utang_payments(*)
             `,
       )
-      .eq("user_id", user.id)
+      .eq("user_id", user_id)
       .order("due_date", { ascending: true, nullsFirst: false });
 
     if (error) throw error;

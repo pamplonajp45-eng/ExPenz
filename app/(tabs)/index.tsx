@@ -97,8 +97,10 @@ export default function Dashboard() {
 
   const [expenses, setExpenses] = useState<any[]>([]);
   const [payrollEntries, setPayrollEntries] = useState<PayrollEntry[]>([]);
+  const [utangs, setUtangs] = useState<any[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
@@ -164,6 +166,7 @@ export default function Dashboard() {
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       // Timeout for user check
       const userPromise = supabase.auth.getUser();
@@ -181,20 +184,73 @@ export default function Dashboard() {
         return;
       }
 
-      // Add timeout to prevent hanging (6s max for data)
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Data load timeout")), 6000),
-      );
+      console.log("✅ User authenticated, loading data...");
 
+      // Use shorter timeout on mobile (3s), longer on web (6s)
+      const isMobile = Platform.OS === "ios" || Platform.OS === "android";
+      const maxWaitTime = isMobile ? 3000 : 6000;
+
+      // Create timeout that can be cancelled
+      let timeoutId: any = null;
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          const err = new Error("Data load timeout - network too slow");
+          console.error("⏱️ TIMEOUT after " + maxWaitTime + "ms:", err);
+          reject(err);
+        }, maxWaitTime);
+      });
+
+      console.log("📦 Fetching expenses, profile, payroll, utangs...");
       const dataPromises = Promise.all([
-        expenseService.getExpenses(),
-        profileService.getProfile(),
-        payrollService.getPayrollEntries(),
-        utangService.getUtangs(),
+        expenseService
+          .getExpenses(user.id)
+          .then((d) => {
+            console.log("✅ Expenses loaded");
+            return d;
+          })
+          .catch((e) => {
+            console.error("❌ Expenses error:", e);
+            return [];
+          }),
+        profileService
+          .getProfile(user.id)
+          .then((d) => {
+            console.log("✅ Profile loaded");
+            return d;
+          })
+          .catch((e) => {
+            console.error("❌ Profile error:", e);
+            return null;
+          }),
+        payrollService
+          .getPayrollEntries(user.id)
+          .then((d) => {
+            console.log("✅ Payroll loaded");
+            return d;
+          })
+          .catch((e) => {
+            console.error("❌ Payroll error:", e);
+            return [];
+          }),
+        utangService
+          .getUtangs(user.id)
+          .then((d) => {
+            console.log("✅ Utangs loaded");
+            return d;
+          })
+          .catch((e) => {
+            console.error("❌ Utangs error:", e);
+            return [];
+          }),
       ]);
 
       const [expenseData, profileData, payrollData, utangData] =
         (await Promise.race([dataPromises, timeoutPromise])) as any;
+
+      // Cancel timeout since data loaded successfully
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
 
       setExpenses(expenseData || []);
       setPayrollEntries(payrollData || []);
@@ -205,7 +261,10 @@ export default function Dashboard() {
         setTempIncome(profileData.monthly_income.toString());
       } else {
         try {
-          const newProfile = await profileService.createProfile();
+          const newProfile = await profileService.createProfile(
+            user.id,
+            user.email || undefined,
+          );
           setProfile(newProfile);
           setTempIncome(newProfile.monthly_income.toString());
         } catch (err) {
@@ -216,12 +275,19 @@ export default function Dashboard() {
       }
 
       setDataLoaded(true);
+      console.log("✅ Dashboard data fully loaded");
     } catch (error: any) {
-      console.error("Dashboard error:", error?.message);
+      console.error("❌ Dashboard error:", error?.message);
       if (error.message?.includes("authenticated")) {
         router.replace("/auth");
         return;
       }
+
+      // Set error message so user knows something went wrong
+      const errorMsg = error?.message?.includes("timeout")
+        ? "Ang connection ay mabagal. Subukan ulit."
+        : "Hindi ma-load ang data. Subukan ulit.";
+      setLoadError(errorMsg);
 
       // Set default empty state on error so page still displays
       setExpenses([]);
@@ -230,6 +296,7 @@ export default function Dashboard() {
       setProfile(null);
       setTempIncome("50000");
       setDataLoaded(true);
+      console.log("⚠️ Using fallback data after error");
     } finally {
       setLoading(false);
     }
@@ -306,9 +373,6 @@ export default function Dashboard() {
     }
   };
 
-  // State added above
-  const [utangs, setUtangs] = useState<any[]>([]);
-
   const totalSpent = expenses
     .filter((e) => e.category !== "Payroll")
     .reduce((sum, e) => sum + e.amount, 0);
@@ -358,9 +422,7 @@ export default function Dashboard() {
           "🚫 Daily quota exceeded! AI Coach will be back tomorrow.",
         );
       } else if (isTimeout) {
-        setAiInsight(
-          "⏱️ AI Coach ay nag-hangover ngayong oras. Try again later!",
-        );
+        setAiInsight("⏱️ Si Coach ay may hangover ngayon. Try again later!");
       } else {
         setAiInsight("Medyo busy ang AI advisor mo. Subukan uli mamaya!");
       }
@@ -504,10 +566,69 @@ export default function Dashboard() {
       <View
         style={[
           styles.container,
-          { backgroundColor: theme.background, justifyContent: "center" },
+          {
+            backgroundColor: theme.background,
+            justifyContent: "center",
+            alignItems: "center",
+          },
         ]}
       >
         <ActivityIndicator color={theme.green} size="large" />
+        <Text
+          style={{
+            color: theme.muted,
+            marginTop: 16,
+            fontSize: 12,
+            textAlign: "center",
+          }}
+        >
+          Wait lang perds, Loading...
+        </Text>
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: theme.background,
+            justifyContent: "center",
+            paddingHorizontal: 24,
+          },
+        ]}
+      >
+        <Text
+          style={{
+            color: theme.red,
+            fontSize: 18,
+            fontWeight: "600",
+            marginBottom: 12,
+            textAlign: "center",
+          }}
+        >
+          Oops! {loadError}
+        </Text>
+        <Text
+          style={{
+            color: theme.muted,
+            fontSize: 14,
+            marginBottom: 24,
+            textAlign: "center",
+          }}
+        >
+          Siguraduhin na ang iyong internet connection ay mabilis at malakas.
+        </Text>
+        <TouchableOpacity
+          style={[styles.mainButton, { backgroundColor: theme.green }]}
+          onPress={() => loadData()}
+        >
+          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
+            Subukan Ulit
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -1157,5 +1278,16 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
+  },
+  mainButton: {
+    height: 56,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
 });

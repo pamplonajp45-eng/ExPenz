@@ -12,16 +12,20 @@ export interface Expense {
 }
 
 export const expenseService = {
-  async getExpenses() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error("User not authenticated");
+  async getExpenses(userId?: string) {
+    let user_id = userId;
+    if (!user_id) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+      user_id = user.id;
+    }
 
     const { data, error } = await supabase
       .from("expenses")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", user_id)
       .order("date", { ascending: false });
 
     if (error) throw error;

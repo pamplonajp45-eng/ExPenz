@@ -16,7 +16,7 @@ const getModel = () => {
 
   const currentKey = API_KEYS[currentKeyIndex];
   const genAI = new GoogleGenerativeAI(currentKey);
-  return genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+  return genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 };
 
 // Function to rotate to next key

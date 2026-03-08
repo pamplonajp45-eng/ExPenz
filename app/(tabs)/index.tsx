@@ -395,34 +395,23 @@ export default function Dashboard() {
   const getAIInsight = async () => {
     setAnalyzing(true);
     try {
-      // Add timeout for AI request (15 seconds max)
-      const insightPromise = aiService.generateInsights(
+      const insight = await aiService.generateInsights(
         expenses,
         capital,
         utangs,
       );
-
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("AI request timeout")), 15000),
-      );
-
-      const insight = await Promise.race([insightPromise, timeoutPromise]);
-
       setAiInsight(insight as string);
       setQuotaExceeded(false);
     } catch (error: any) {
       console.error("AI Error:", error.message);
       const isQuotaError =
         error.message?.includes("429") || error.message?.includes("quota");
-      const isTimeout = error.message?.includes("timeout");
 
       if (isQuotaError) {
         setQuotaExceeded(true);
         setAiInsight(
           "🚫 Daily quota exceeded! AI Coach will be back tomorrow.",
         );
-      } else if (isTimeout) {
-        setAiInsight("⏱️ Si Coach ay may hangover ngayon. Try again later!");
       } else {
         setAiInsight("Medyo busy ang AI advisor mo. Subukan uli mamaya!");
       }

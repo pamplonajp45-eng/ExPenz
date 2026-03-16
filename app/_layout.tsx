@@ -27,7 +27,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     let mounted = true;
-    let timeouts: NodeJS.Timeout[] = [];
+    let timeouts: any[] = [];
 
     const initializeAuth = async () => {
       try {
